@@ -160,12 +160,30 @@ the mirror comes at once (the intro stops); taken off for 5 s (`-OffReset 5`), f
 the app is told to go back to START (command file, see 3d). `-WaitForButton` / `-KeepFilmWhenOff` give the
 older behaviour (view only after the intro; the headset app ends the film itself ~10 s after removal) - advanced
 options only: since 2026-09-29 the PC demo has one start file, `START PC DEMO.bat` (the "button first" file is gone).
-PC demo (`-PcApp`, since 2026-09-29): "worn" comes from two signals - the app's wear sensor (OpenXR user presence)
-and SteamVR's own state from `<Steam>\logs\vrmonitor.txt` (`Transition ... to 'SteamVRSystemState_Ready'` /
+PC demo (`-PcApp`): **"worn" comes from the headset's own proximity sensor, read over USB with adb** (since
+2026-09-30). `MoiProximityPoller` (C# thread in `visitor-station.ps1`) runs `adb -s <serial> shell dumpsys
+sensorservice` once a second (~40 ms) on the VIVE headset among the adb devices and takes the newest event of
+"ucs148c1 Proximity Sensor Wakeup: last 30 events" (`N (ts=..., wall=...) V, 0.00, 0.00`, V 0.00 = near = worn,
+1.00 = far = off; newest by `ts`, because the headset's wall clock is wrong without internet). A reading older than
+3 s counts as none. Station log: `headset proximity sensor: worn / taken off`, `...: read over USB (<serial>)`,
+`...: no reading (<why>)`. While there is a reading it alone decides; `-NoProximity` switches it off. A film that
+starts in Waiting / Intro / Wear while the sensor says "off" is not a visitor (an app that starts on a look, set off
+by a headset standing on a table) - the station resets the app and stays on "Press the button".
+Why: the two older signals, now only the fallback, both stay "worn" until the headset falls asleep, 3 minutes after
+it is put down (the Focus Vision's shortest sleep setting) - measured on the ASUS PC 2026-09-30: worn=True from app
+start with the headset on the table, SteamVR Ready throughout, no reset in 60 s; with the sensor: on -> view in the
+same second, off -> "Press the button" + app reset after exactly 5 s (3 films), on during the intro -> intro stops.
+Requirements it adds: USB debugging on the headset and this PC allowed once ("Allow USB debugging?", "Always allow");
+kiosk mode off or allowing VIVE Streaming (as before). adb: the station uses the exe of the adb server that is already
+running, else VIVE Hub's `VIVE Hub\CommonTools\ADB\adb.exe` (installed on every PC-demo PC), else the scrcpy/Unity
+copy, else PATH. VIVE Hub 30.0.4, Unity 34.0.5 and scrcpy 37.0.0 adb all speak protocol 41, so none of them restarts
+another's server; the poller starts the server with a 30 s limit (as `MoiHeadsetPoller`).
+Fallback signals: the app's wear sensor (OpenXR user presence) and SteamVR's own state from
+`<Steam>\logs\vrmonitor.txt` (`Transition ... to 'SteamVRSystemState_Ready'` /
 `'..._Standby'`; Steam folder from `HKCU\Software\Valve\Steam\SteamPath`). SteamVR decides when the app reports
 `worn=Unknown`; a Standby later than the app's last "worn" always counts as off (sensor missing or stuck); SteamVR's
 Ready alone never overrides the app's "not worn" (staff picking the headset up). `-NoSteamVr` switches it off,
-`-SteamVrLog <file>` reads another file (tests: `Deploy/dev-tools/steamvr_signal_test.ps1`, 22 checks).
+`-SteamVrLog <file>` reads another file (tests: `Deploy/dev-tools/steamvr_signal_test.ps1`, 42 checks incl. the proximity sensor and its parser).
 
 **The button (Arduino over USB serial).** Sketch: `Deploy/arduino/moi_button/moi_button.ino`.
 Button (or a sensor's digital output) between pin 2 and GND; upload with the Arduino IDE; plug the Arduino

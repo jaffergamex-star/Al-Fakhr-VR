@@ -29,7 +29,14 @@ INSTALL ON THE PC (one time)
   If Windows says "Windows protected your PC" the first time: More info > Run anyway (the app is not
   signed).
 
-  On the headset: turn kiosk mode off (kiosk mode blocks the VIVE Streaming app the demo needs).
+  On the headset:
+  - Turn kiosk mode off, or let it allow VIVE Streaming (kiosk mode blocks the VIVE Streaming app the
+    demo needs).
+  - USB debugging ON (Settings > Advanced > Developer options). The demo reads the headset's proximity
+    sensor over the USB cable to know when it is put on and taken off. The first time the demo runs with
+    the headset plugged into this PC, the headset asks "Allow USB debugging?": tick "Always allow from
+    this computer" and press OK (put the headset on to see it). Nothing else to install: the demo uses
+    the adb that comes with VIVE Hub.
 
 
 EACH DAY
@@ -82,14 +89,24 @@ OTHER WAYS TO START
 
 
 IF SOMETHING DOES NOT WORK
-  - Taking the headset off does nothing / putting it on does not start the view: the station follows two
-    signals - the headset's wear sensor (through the app) and SteamVR's own state (Ready / Standby, from
-    SteamVR's log vrmonitor.txt). The station log (logs folder) shows "SteamVR: Ready" / "SteamVR: Standby"
-    and "headset: ... worn=True/False" lines; the app's log (path below) shows "[MOI] WORN True/False".
-    If neither changes when the headset is put on and taken off, send both logs. (The demo switches VIVE
-    Hub's OpenXR add-ons off for the app because one of them hid the sensor on a PC.) With no signal at all
-    the demo still works with the button and the intro: the headset view comes 12 seconds after the intro
-    or as soon as START is pressed in the headset, and a visit ends when the film ends.
+  - Taking the headset off does nothing / putting it on does not start the view: the station knows it
+    from the headset's proximity sensor (the sensor between the lenses that feels a face), read over the
+    USB cable once a second. The station log (logs folder) shows "headset proximity sensor: worn" /
+    "taken off"; after "taken off" the screen is back at "Press the button" 5 seconds later.
+    If the log says "headset proximity sensor: no reading", the reason follows in brackets:
+      - "USB debugging not allowed for this PC yet": put the headset on and accept "Allow USB debugging?"
+        (tick "Always allow").
+      - "no headset over adb": USB debugging is off on the headset, or the cable is out.
+      - "no adb on this PC": VIVE Hub is not installed.
+    Without the proximity sensor the station falls back to two slower signals - the headset's wear flag
+    (through the app, "[MOI] WORN True/False" in the app's log) and SteamVR's own state ("SteamVR: Ready" /
+    "Standby"). Both only say "taken off" when the headset falls asleep, about 3 minutes after it is put
+    down. With no signal at all the demo still works with the button and the intro: the headset view comes
+    12 seconds after the intro or as soon as START is pressed in the headset, and a visit ends when the film
+    ends.
+  - The station and VIVE Hub both use adb (Android's USB tool). They don't disturb each other: the demo
+    uses the adb that is already running, or else VIVE Hub's own copy, and all the adb copies involved
+    speak the same protocol version.
   - The headset shows the SteamVR home but not the museum: SteamVR must be the OpenXR runtime (install
     step 6). The app looks for the headset every 10 seconds; if it still doesn't appear, close the demo
     (Ctrl+Shift+Q) and start it again with the headset connected.

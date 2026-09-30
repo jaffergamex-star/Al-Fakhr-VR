@@ -77,6 +77,12 @@
                            of being sent back to START
       -KeepViveLayers      (with -PcApp) leave VIVE Hub's OpenXR add-on layers on for the app (off by default: the app
                            doesn't use them, and one of them hid the headset's wear sensor on a PC)
+      Worn / taken off in the PC demo: the headset's own proximity sensor, read over the USB cable with adb once a second
+                           (MoiProximityPoller) - exact and instant in any position. The app's wear sensor and SteamVR's
+                           Ready / Standby are only the fallback while there is no proximity reading: both stay "worn"
+                           until the headset falls asleep, 3 minutes after it is put down (measured 2026-09-30).
+                           Needs USB debugging on the headset and this PC allowed once. Log: "headset proximity sensor: ...".
+      -NoProximity         (with -PcApp) don't read the proximity sensor (then the app's sensor + SteamVR decide)
       -NoSteamVr           (with -PcApp) don't use SteamVR's own state (Ready / Standby, from its log vrmonitor.txt) as a
                            second "headset worn" signal next to the app's wear sensor
       -SteamVrLog <file>   (with -PcApp) read this SteamVR log instead of <Steam>\logs\vrmonitor.txt (for tests)
@@ -128,6 +134,7 @@ param(
     [switch]$KeepViveLayers,
     [switch]$NoSteamVr,
     [string]$SteamVrLog = "",
+    [switch]$NoProximity,
     [int]$AutoPressAfter = 0,
     [int]$QuitAfter = 0,
     [string]$SerialPort = "auto",
@@ -437,6 +444,97 @@ public class MoiHeadsetPoller {
     }
 }
 
+// PC demo: the headset's own proximity sensor (a face in the headset or not), read over the USB cable once a second.
+// The headset logs every change of it ("ucs148c1 Proximity Sensor Wakeup: last 30 events", value 0.00 = near = worn,
+// 1.00 = far = off); the newest event (by its ts, not the headset's clock, which is wrong without internet) is the state.
+// SteamVR's own "worn" and Ready/Standby only change when the headset falls asleep, 3 minutes after it is put down.
+public class MoiProximityPoller {
+    readonly string adb;
+    volatile string serial = "", problem = "";
+    volatile int state = -1;          // -1 no reading, 0 taken off, 1 worn
+    long atTicks;
+    volatile bool stop;
+    public string Serial { get { return serial; } }
+    public string Problem { get { return problem; } }
+    public int State { get { return state; } }
+    public DateTime At { get { return new DateTime(Interlocked.Read(ref atTicks)); } }
+    public MoiProximityPoller(string adb) { this.adb = adb; }
+    public void Start() { new Thread(Loop) { IsBackground = true }.Start(); }
+    public void Stop() { stop = true; }
+    void Loop() {
+        bool serverUp = false;
+        var nextFind = DateTime.MinValue;
+        while (!stop) {
+            var sw = Stopwatch.StartNew();
+            try {
+                // As MoiHeadsetPoller: starting the adb server can take over 5 s.
+                if (!serverUp) serverUp = Run("start-server", 30000) != null;
+                if (serial.Length == 0 && DateTime.Now >= nextFind) { nextFind = DateTime.Now.AddSeconds(3); serial = FindHeadset(); }
+                if (serial.Length > 0) {
+                    string text = Run("-s " + serial + " shell dumpsys sensorservice", 5000);
+                    // Unplugged, or one call failed: look for it again. The last reading is kept; it counts for 3 s only
+                    // (see the station), so one hiccup changes nothing.
+                    if (text == null) { serverUp = false; serial = ""; }
+                    else if (text.Length == 0) serial = "";
+                    else {
+                        int s = Parse(text);
+                        if (s < 0) problem = "the headset reports no proximity sensor history";
+                        else { problem = ""; state = s; Interlocked.Exchange(ref atTicks, DateTime.Now.Ticks); }
+                    }
+                }
+            } catch (Exception e) { problem = e.Message; }
+            int rest = 1000 - (int)sw.ElapsedMilliseconds;
+            Thread.Sleep(rest > 50 ? rest : 50);
+        }
+    }
+    // A VIVE headset among the adb devices (a phone on the same PC also has a proximity sensor). Says why when there is none.
+    string FindHeadset() {
+        string list = Run("devices", 5000);
+        if (list == null) { problem = "adb did not answer"; return ""; }
+        bool unauthorized = false;
+        foreach (var raw in list.Split('\n')) {
+            var line = raw.Trim();
+            if (line.EndsWith("\tunauthorized")) { unauthorized = true; continue; }
+            if (!line.EndsWith("\tdevice")) continue;
+            var s = line.Split('\t')[0];
+            var model = Run("-s " + s + " shell getprop ro.product.model", 5000) ?? "";
+            if (model.IndexOf("VIVE", StringComparison.OrdinalIgnoreCase) >= 0 || model.IndexOf("Focus", StringComparison.OrdinalIgnoreCase) >= 0) { problem = ""; return s; }
+        }
+        problem = unauthorized ? "USB debugging not allowed for this PC yet (accept 'Allow USB debugging?' in the headset)"
+                               : "no headset over adb (USB debugging off, or the cable is out)";
+        return "";
+    }
+    static readonly System.Text.RegularExpressions.Regex Event = new System.Text.RegularExpressions.Regex(@"^\s*\d+ \(ts=([\d.]+), wall=[\d:.]+\) (-?[\d.]+),");
+    public static int Parse(string text) {
+        string[] lines = text.Split('\n');
+        int block = -1;
+        for (int i = 0; i < lines.Length; i++) {
+            if (lines[i].IndexOf("Proximity Sensor", StringComparison.OrdinalIgnoreCase) < 0 || lines[i].IndexOf(": last", StringComparison.Ordinal) < 0) continue;
+            block = i;
+            if (lines[i].IndexOf("Wakeup", StringComparison.Ordinal) >= 0 && lines[i].IndexOf("Non-wakeup", StringComparison.Ordinal) < 0) break;  // prefer the wake-up sensor
+        }
+        if (block < 0) return -1;
+        double bestTs = -1, value = -1;
+        for (int i = block + 1; i < lines.Length; i++) {
+            var m = Event.Match(lines[i]);
+            if (!m.Success) break;
+            double ts = double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            if (ts > bestTs) { bestTs = ts; value = double.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture); }
+        }
+        if (bestTs < 0) return -1;
+        return value < 0.5 ? 1 : 0;
+    }
+    string Run(string args, int limitMs) {
+        var psi = new ProcessStartInfo(adb, args) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+        using (var p = Process.Start(psi)) {
+            var outTask = p.StandardOutput.ReadToEndAsync();
+            var errTask = p.StandardError.ReadToEndAsync();
+            if (!p.WaitForExit(limitMs)) { try { p.Kill(); } catch { } return null; }
+            return outTask.Wait(1000) ? outTask.Result : "";
+        }
+    }
+}
+
 public class MoiLogWatcher {
     public readonly ConcurrentQueue<string> Lines = new ConcurrentQueue<string>();
     Process proc;
@@ -717,6 +815,7 @@ $S = @{
     pcAppStarted = [DateTime]::MaxValue; pcAppNextStart = [DateTime]::MinValue; pcAppPlaced = 0; pcAppExitSeen = $false
     vrWorn = $null; vrWornAt = [DateTime]::MinValue; vrState = ""; vrLogPos = [long]0; vrLogHead = ""; vrStateLogged = $false
     appWorn = $null; appWornAt = [DateTime]::MinValue; wornNote = ""
+    prox = $null; proxReading = $null; proxWorn = $null; proxProblem = ""; proxStarted = [DateTime]::MinValue
     watcher = New-Object MoiLogWatcher; worn = $null; paused = $null; status = $null; statusRaw = ""; serial = New-Object MoiSerial; serialNextTry = [DateTime]::MinValue; serialOpenedAt = [DateTime]::MinValue; introStarted = $false; warming = $false; warmStart = [DateTime]::MinValue; warmOpenedAt = $null; rendered = $false; mirrorCheck = [DateTime]::MinValue; screenCheck = [DateTime]::Now; appNextCheck = [DateTime]::MinValue; simSent = $false; lastCheck = [DateTime]::MinValue; started = [DateTime]::Now; autoPressed = $false
 }
 
@@ -1013,6 +1112,40 @@ function Read-SteamVrState {
     }
 }
 
+# PC demo: which adb reads the proximity sensor. The one already running as the adb server (VIVE Hub's, Unity's, scrcpy's
+# all speak adb protocol 41, so any of them works with any server - taking the same program just avoids surprises), else
+# VIVE Hub's own copy (installed on every PC-demo PC), else the one next to scrcpy / in Unity, else one on PATH.
+function Find-ProximityAdb {
+    $running = $null
+    try { $running = @(Get-CimInstance Win32_Process -Filter "Name='adb.exe'" -ErrorAction Stop | Where-Object { $_.ExecutablePath } | Select-Object -ExpandProperty ExecutablePath)[0] } catch { }
+    if ($running -and (Test-Path $running)) { return $running }
+    foreach ($c in @((Join-Path $env:ProgramFiles "VIVE Hub\VIVE Hub\CommonTools\ADB\adb.exe"), (Join-Path $env:ProgramFiles "VIVE Hub\VIVE Business Streaming\CommonTools\ADB\adb.exe"), $Adb)) {
+        if ($c -and (Test-Path $c)) { return $c }
+    }
+    $cmd = Get-Command adb -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return $null
+}
+
+# PC demo: the proximity sensor's answer - $true worn, $false taken off, $null no reading (not started, no adb, no allowed
+# headset, or the last reading is older than 3 s). Logs when the reading comes and goes, and every change.
+function Get-ProximityWorn {
+    if (-not $S.prox) { return $null }
+    $p = $S.prox
+    $worn = if ($p.State -ge 0 -and ([DateTime]::Now - $p.At).TotalSeconds -le 3) { $p.State -eq 1 } else { $null }
+    $reading = $null -ne $worn
+    # The first seconds after the start the reader is still finding the headset: no "no reading" note for that.
+    if (-not $reading -and $null -eq $S.proxReading -and ([DateTime]::Now - $S.proxStarted).TotalSeconds -lt 15) { return $null }
+    if ($reading -ne $S.proxReading) {
+        $S.proxReading = $reading
+        if ($reading) { Log "headset proximity sensor: read over USB ($($p.Serial)) - it decides worn / taken off" }
+        else { $S.proxProblem = $p.Problem; Log ("headset proximity sensor: no reading - the app's sensor and SteamVR decide" + $(if ($p.Problem) { " ($($p.Problem))" } else { "" })) }
+    }
+    elseif (-not $reading -and $p.Problem -and $p.Problem -ne $S.proxProblem) { $S.proxProblem = $p.Problem; Log "headset proximity sensor: $($p.Problem)" }
+    if ($reading -and $worn -ne $S.proxWorn) { $S.proxWorn = $worn; Log $(if ($worn) { "headset proximity sensor: worn" } else { "headset proximity sensor: taken off" }) }
+    return $worn
+}
+
 # Reads the app's one-line status file on the headset (written by the app on every change):
 #   state=Idle worn=True paused=False films=3
 # and turns changes into the same events the station reacts to. (The headset's log buffer is too small
@@ -1045,16 +1178,22 @@ function Poll-HeadsetStatus {
     # boundary) while someone wears it.
     $appWorn = if ($now.worn -eq "True") { $true } elseif ($now.worn -eq "False" -or -not $PcApp) { $false } else { $null }
     if ($PcApp) {
-        # PC VR demo: two signals - the app's wear sensor and SteamVR's own state (Read-SteamVrState). SteamVR's "Ready"
-        # also comes when staff just pick the headset up by hand, so it only decides when the app has no sensor at all;
-        # its "Standby" after the app last said "worn" always counts (a sensor that is missing or stuck on "worn").
+        # PC VR demo: the headset's proximity sensor decides whenever it can be read (Get-ProximityWorn). Without it, two
+        # fallback signals - the app's wear sensor and SteamVR's own state (Read-SteamVrState). Both stay "worn" until the
+        # headset falls asleep, 3 minutes after it is put down. SteamVR's "Ready" also comes when staff just pick the
+        # headset up by hand, so it only decides when the app has no sensor at all; its "Standby" after the app last said
+        # "worn" always counts (a sensor that is missing or stuck on "worn").
         if ($appWorn -ne $S.appWorn -or -not $prev) { $S.appWorn = $appWorn; $S.appWornAt = [DateTime]::Now }
-        $worn = if ($null -eq $S.appWorn) { $S.vrWorn }
-                elseif ($S.appWorn -and $S.vrWorn -eq $false -and $S.vrWornAt -gt $S.appWornAt) { $false }
-                else { $S.appWorn }
-        $note = if ($null -eq $S.appWorn -and $null -ne $S.vrWorn) { "worn/not worn from SteamVR ($($S.vrState)): the app reports no wear sensor" }
-                elseif ($S.appWorn -and $worn -eq $false) { "headset counted as off: SteamVR went to Standby after the app last said worn" }
-                else { "" }
+        $prox = Get-ProximityWorn
+        if ($null -ne $prox) { $worn = $prox; $note = "" }
+        else {
+            $worn = if ($null -eq $S.appWorn) { $S.vrWorn }
+                    elseif ($S.appWorn -and $S.vrWorn -eq $false -and $S.vrWornAt -gt $S.appWornAt) { $false }
+                    else { $S.appWorn }
+            $note = if ($null -eq $S.appWorn -and $null -ne $S.vrWorn) { "worn/not worn from SteamVR ($($S.vrState)): the app reports no wear sensor" }
+                    elseif ($S.appWorn -and $worn -eq $false) { "headset counted as off: SteamVR went to Standby after the app last said worn" }
+                    else { "" }
+        }
         if ($note -ne $S.wornNote) { $S.wornNote = $note; if ($note) { Log $note } }
         $S.worn = $worn
     }
@@ -1076,6 +1215,14 @@ function Handle-Headset-Line($line) {
     $msg = $line.Substring($i + 6).Trim()
     switch -Regex ($msg) {
         "^STATE Playing" {
+            # PC demo: the proximity sensor says nobody wears the headset, yet the film started - not a visitor (an app
+            # that starts on a look can be set off by a headset standing on a table, facing START). The app goes straight
+            # back to START and the screen stays on "Press the button".
+            if ($PcApp -and ($S.state -in @("Wear", "Waiting", "Intro")) -and ((Get-ProximityWorn) -eq $false)) {
+                Log "film started while nobody wears the headset (proximity sensor) - ignored"
+                Send-AppCommand "reset" "film started with the headset off"
+                return
+            }
             # Somebody pressed START inside the headset: they are in it, whatever the wear sensor says - so also from
             # "Press the button" or the intro (which is stopped by the Wear step).
             if ($S.state -in "Wear", "Waiting", "Intro") {
@@ -1308,6 +1455,7 @@ $window.Add_Closing({
 $window.Add_Closed({
     $timer.Stop(); $S.watcher.Stop(); $S.serial.Close()
     if ($S.poller) { $S.poller.Stop() }
+    if ($S.prox) { $S.prox.Stop() }
     if ($S.scrcpy -and -not $S.scrcpy.HasExited) { $S.scrcpy.Kill() }
 })
 
@@ -1322,6 +1470,13 @@ Enter-State "Waiting"
 [MoiKeys]::Watch($vk)
 # The headset is read over USB on its own thread (not for the PC demo or a simulated headset).
 if (-not $PcApp -and -not $SimulateHeadset) { $S.poller = New-Object MoiHeadsetPoller($Adb, $AppPackage, $Serial); $S.poller.Start() }
+# PC demo: the headset's proximity sensor, also on its own thread.
+if ($PcApp -and -not $NoProximity -and -not $SimulateHeadset) {
+    $proxAdb = Find-ProximityAdb
+    if ($proxAdb) { $S.prox = New-Object MoiProximityPoller($proxAdb); $S.proxStarted = [DateTime]::Now; $S.prox.Start(); Log "headset proximity sensor: read over USB with $proxAdb" }
+    else { Log "headset proximity sensor: no adb on this PC (VIVE Hub not installed?) - the app's sensor and SteamVR decide" }
+}
+elseif ($PcApp) { Log "headset proximity sensor: not used (-NoProximity) - the app's sensor and SteamVR decide" }
 $timer.Start()
 $app = New-Object System.Windows.Application
 $app.ShutdownMode = "OnMainWindowClose"

@@ -88,8 +88,13 @@ incl. "headset on during the intro -> intro stops, view shows"); the PC demo has
 - Windows/headset players can't play 10-bit HEVC (freezes at 0 fps). Films must be 8-bit HEVC (or H.264).
 - The app writes `status.txt` (`state= worn= paused= films=`); the station only trusts it while the app runs. On Windows
   the wear sensor is `OpenXRUtility.IsUserPresent`, polled each frame (events alone miss a headset already worn at start).
-  PC demo: the station also reads SteamVR's state from `<Steam>\logs\vrmonitor.txt` (Ready / Standby) as a second signal
-  (`Read-SteamVrState`; rules in DEPLOYMENT.md; unit test `Deploy/dev-tools/steamvr_signal_test.ps1`).
+  **PC demo: worn / taken off comes from the headset's own proximity sensor, read over USB with adb** (`MoiProximityPoller`
+  in `visitor-station.ps1`, `dumpsys sensorservice` once a second; since 2026-09-30, verified live on the ASUS PC). The
+  app's `IsUserPresent` and SteamVR's state from `<Steam>\logs\vrmonitor.txt` (Ready / Standby, `Read-SteamVrState`) are
+  only the fallback when there is no proximity reading: BOTH stay "worn" until the headset sleeps, 3 minutes after it is
+  put down (the shortest sleep setting). Needs USB debugging + this PC allowed once. Rules in DEPLOYMENT.md; unit test
+  `Deploy/dev-tools/steamvr_signal_test.ps1` (42 checks). The headset's wall clock is wrong without internet (showed
+  2025-05-26) - never compare headset log times with the PC's; the sensor history is ordered by its `ts`.
 - adb: starting the adb server can take over 5 s (5.1 s on the laptop); the station's headset reader used to cut every adb
   call at 5 s, so with no server running it never saw the headset. Fixed 2026-09-29 (`MoiHeadsetPoller`: `start-server`
   with a 30 s limit first and after any cut-off call) - in `Deploy/` only, the packages still have the old copy.
@@ -114,10 +119,13 @@ incl. "headset on during the intro -> intro stops, view shows"); the PC demo has
 - Don't use the user's personal screen recordings from Videos/Downloads as content.
 
 ## Open items (2026-09-29)
-1. **PC demo: headset down -> "Press the button"** (failed on the ASUS PC in the old "button first" mode). Done in code
-   2026-09-29 (plan: `NEXT-SESSION-PLAN.md`): SteamVR state as a second worn signal + one start file; unit test passes.
-   Still to do: the step-by-step live test with the headset (plan step 4), then the same on the ASUS PC with the new
-   `visitor-station.ps1` (the ASUS copy is older).
+1. **PC demo: headset down -> "Press the button" - SOLVED 2026-09-30 on the ASUS PC** with the proximity sensor (see the
+   rule above). The SteamVR-state version failed there live (worn=True from the start, Ready throughout, no reset in 60 s).
+   Live with the sensor: on -> view in the same second, off during the film -> "Press the button" + app reset after 5 s
+   (3 of 3), on during the intro -> intro stops. Not yet tried: off in the view BEFORE a film, and the headset left on the
+   table for a minute after a reset (the ASUS app build still starts on a look; the station ignores a film that starts
+   while the sensor says off and resets the app). The Desktop package `MOI_PC_Demo_2026-09-29` on the ASUS has the new
+   station; `Delivery/MOI_PC_Demo(.zip)` does not.
    2026-09-29 ~23:40: `Delivery/MOI_VR_Station.zip` rebuilt on request (762 MB; copy in the laptop's Downloads): APK
    23:21 (START video + invisible hotspot, zoom out 35-36 s, controller-only start, presence polling on the headset,
    no debug text), film `Al_Fakhr_Final_Version_360`, station with adb fix + `button-commands.txt`,
