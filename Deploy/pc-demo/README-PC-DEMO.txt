@@ -62,6 +62,10 @@ DURING A VISIT
     (Lifting it for a moment and putting it straight back on changes nothing.)
   - After the film the screen goes back to "Press the button to begin"; a visitor still wearing the
     headset stays in the headset view and can press START again.
+  - Sound: the app (START screen video and film) is heard only while someone wears the headset. At
+    "Press the button", during the intro and "Please put on the headset" the station mutes the app in the
+    Windows volume mixer, so only the intro's own sound plays. Station log: "app sound on / off".
+    (START PC DEMO with -PcAppSoundAlways keeps the app's sound on all the time.)
   - Staff reset in the headset: hold the left controller's Menu button (or both grips) for 2 seconds =
     back to START, turned to face the visitor; 6 seconds = reload.
 
