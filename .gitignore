@@ -20,7 +20,10 @@
 .claude/
 
 # Builds and delivery packages (rebuilt from the project; the films are not in the repo)
-/[Bb]uilds/
+/[Bb]uilds/*
+!/Builds/Windows/
+/Builds/Windows/content/
+/Builds/Windows/*DoNotShip*/
 /Delivery/
 /Review/
 
