@@ -1,0 +1,292 @@
+<title>MOI VR Station Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F4F6F9;
+    --paper: #FFFFFF;
+    --ink: #17202E;
+    --muted: #5A6577;
+    --line: #DCE2EA;
+    --accent: #1F63D6;
+    --accent-soft: #E6EEFC;
+    --gold: #A07C3A;
+    --gold-soft: #F6EFE2;
+    --warn: #B4491C;
+    --warn-soft: #FCEDE6;
+    --step: #0E1A2B;
+    --step-ink: #FFFFFF;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0C121C;
+      --paper: #131B28;
+      --ink: #E7ECF3;
+      --muted: #9AA6B8;
+      --line: #263244;
+      --accent: #6FA2FF;
+      --accent-soft: #172A4A;
+      --gold: #D9B774;
+      --gold-soft: #2A2416;
+      --warn: #FF9A6B;
+      --warn-soft: #3A1E13;
+      --step: #6FA2FF;
+      --step-ink: #0C121C;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C121C;
+    --paper: #131B28;
+    --ink: #E7ECF3;
+    --muted: #9AA6B8;
+    --line: #263244;
+    --accent: #6FA2FF;
+    --accent-soft: #172A4A;
+    --gold: #D9B774;
+    --gold-soft: #2A2416;
+    --warn: #FF9A6B;
+    --warn-soft: #3A1E13;
+    --step: #6FA2FF;
+    --step-ink: #0C121C;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Figtree", "Segoe UI", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+
+  h1, h2, h3 { font-family: "Sora", "Segoe UI", system-ui, sans-serif; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; letter-spacing: -0.01em; }
+  h2 { font-size: 22px; line-height: 1.25; }
+  h3 { font-size: 16px; }
+  p { margin: 0; max-width: 68ch; }
+
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold);
+  }
+  header { display: flex; flex-direction: column; gap: 12px; }
+  header p { color: var(--muted); font-size: 17px; }
+
+  /* The station's own screen sequence, as the visitor meets it */
+  .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .screen {
+    background: #05080D; color: #C8D7FF; border-radius: 10px; padding: 14px 12px 12px;
+    display: flex; flex-direction: column; gap: 8px; min-height: 118px; border: 1px solid var(--line);
+  }
+  .screen .where { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #6F7F9C; }
+  .screen .shows { font-family: "Sora", sans-serif; font-size: 15px; line-height: 1.3; color: #DCE6FF; }
+  .screen .next { margin-top: auto; font-size: 12.5px; color: #8FA3C6; }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; counter-reset: s; }
+  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 32px 1fr; gap: 14px; align-items: start; }
+  ol.steps > li::before {
+    content: counter(s); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--step); color: var(--step-ink); font-family: "Sora", sans-serif; font-weight: 600; font-size: 15px;
+  }
+  ol.steps .t { font-weight: 600; }
+  ol.steps .d { color: var(--muted); }
+
+  ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  ul.plain li::marker { color: var(--accent); }
+
+  .note { background: var(--accent-soft); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .note.gold { background: var(--gold-soft); }
+  .note.warn { background: var(--warn-soft); }
+  .note b { font-weight: 600; }
+
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .control { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .control .how { font-family: "Sora", sans-serif; font-weight: 600; font-size: 15px; }
+  .control .what { color: var(--muted); font-size: 14.5px; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--bg); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; width: 38%; }
+
+  .fill { display: inline-block; min-width: 180px; border-bottom: 1.5px solid var(--muted); height: 1.2em; vertical-align: bottom; }
+  .contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .contacts div { display: flex; flex-direction: column; gap: 8px; }
+  .contacts .lbl { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  details.tech { background: var(--paper); border: 1px dashed var(--line); border-radius: 12px; padding: 16px 20px; }
+  details.tech summary { cursor: pointer; font-family: "Sora", sans-serif; font-weight: 600; }
+  details.tech summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+  details.tech .inner { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; color: var(--muted); font-size: 14.5px; }
+  code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; background: var(--bg); padding: 1px 5px; border-radius: 4px; color: var(--ink); overflow-wrap: anywhere; }
+
+  footer { color: var(--muted); font-size: 13px; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">Ministry of Interior Museum &middot; The Promise of Safety</span>
+    <h1>VR station handbook</h1>
+    <p>Everything you need to run the VR experience each day. You never need a keyboard or mouse: the computer, the headset and the button look after themselves once they are switched on.</p>
+  </header>
+
+  <section>
+    <h2>What the station is made of</h2>
+    <div class="card">
+      <ul class="plain">
+        <li><b>The screen</b>. Shows the intro film and what the visitor sees in the headset. The station finds it by itself.</li>
+        <li><b>The computer</b> behind or under the stand. Runs the screen. It starts everything by itself.</li>
+        <li><b>The headset</b> (VIVE Focus Vision) and its two hand controllers. The headset stays connected to the computer with its cable at all times, day and night. Never take the cable out, not even for charging: the cable charges it while the computer is on.</li>
+        <li><b>The play button</b> the visitor presses. It is connected to the computer with a cable.</li>
+      </ul>
+      <div class="note warn"><b>Never unplug the headset cable or the button cable while the museum is open.</b> The station needs both. If one comes loose, plug it back in and wait 10 seconds; the station reconnects by itself.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What a visitor experiences</h2>
+    <div class="flow">
+      <div class="screen"><span class="where">Screen</span><span class="shows">Press the button to begin</span><span class="next">Visitor presses the play button</span></div>
+      <div class="screen"><span class="where">Screen</span><span class="shows">Intro film plays</span><span class="next">About 2 minutes</span></div>
+      <div class="screen"><span class="where">Screen</span><span class="shows">Please put on the headset</span><span class="next">Help the visitor put it on (the view also comes if it goes on earlier)</span></div>
+      <div class="screen"><span class="where">Headset</span><span class="shows">A 360&deg; video with the START panel straight ahead</span><span class="next">Visitor points at START and pulls the trigger</span></div>
+      <div class="screen"><span class="where">Headset + screen</span><span class="shows">The 360&deg; film plays; the screen shows what the visitor sees</span><span class="next">About 2&frac12; minutes</span></div>
+      <div class="screen"><span class="where">Screen</span><span class="shows">Back to &ldquo;Press the button to begin&rdquo;</span><span class="next">Headset off for 5 seconds: back to START for the next visitor</span></div>
+    </div>
+    <div class="card">
+      <h3>How the visitor presses START in the headset</h3>
+      <ul class="plain">
+        <li>Point either hand controller at the START panel in the video (a thin light beam appears) and pull the trigger under the index finger, <b>or</b></li>
+        <li>press the A or X button on a controller.</li>
+      </ul>
+      <p>Looking at START does not start the film: give the visitor a controller.</p>
+      <p>The headset decides the flow: <b>putting it on at any time</b> shows the headset view straight away, also while &ldquo;Press the button to begin&rdquo; is showing or during the intro (the intro then stops). <b>Taking it off</b>, at START or during the film, brings the screen back to &ldquo;Press the button to begin&rdquo; after 5 seconds and puts the headset back on its START screen for the next visitor. Lifting it for a moment and putting it straight back on changes nothing.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Opening: start of the day</h2>
+    <div class="card">
+      <ol class="steps">
+        <li><div><div class="t">Switch on the screen.</div><div class="d">Use its remote or power button.</div></div></li>
+        <li><div><div class="t">Switch on the computer.</div><div class="d">Wait about one minute. It signs in by itself and the screen shows <b>&ldquo;Press the button to begin&rdquo;</b> in full screen. Do not touch the keyboard.</div></div></li>
+        <li><div><div class="t">Switch on the headset.</div><div class="d">Press and hold its power button for a few seconds. It opens the museum experience by itself. Leave it on its cable.</div></div></li>
+        <li><div><div class="t">Switch on the two controllers.</div><div class="d">Press the VIVE button on each controller until its light turns on.</div></div></li>
+        <li><div><div class="t">Do one test run yourself.</div><div class="d">Press the play button, watch the intro, put the headset on when asked. The screen should show your view and START should be right in front of you. Press START, then take the headset off: after 5 seconds the screen shows &ldquo;Press the button to begin&rdquo; again.</div></div></li>
+      </ol>
+      <div class="note"><b>The station is ready</b> when the screen shows &ldquo;Press the button to begin&rdquo; and the test run worked.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Between visitors</h2>
+    <div class="card">
+      <ul class="plain">
+        <li>Wipe the face cushion and the controller grips with a hygiene wipe.</li>
+        <li>Clean the lenses only with a dry microfibre cloth, never with wipes or liquid.</li>
+        <li>Put the headset down with the lenses facing away from windows and bright lights. Sunlight on the lenses can damage the screens inside.</li>
+        <li>Help each visitor put the headset on: back strap over the back of the head, tighten the knob at the back until it sits firmly and the picture is sharp.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Staff controls</h2>
+    <div class="controls">
+      <div class="control"><span class="how">Hold the left controller&rsquo;s Menu button for 2 seconds</span><span class="what">(or squeeze both side grips). The headset goes back to its START screen, even in the middle of the film. A short press does nothing, so visitors can&rsquo;t trigger it by accident.</span></div>
+      <div class="control"><span class="how">Keep holding for 6 seconds</span><span class="what">Restarts the museum experience inside the headset. Use this if the headset picture looks wrong.</span></div>
+      <div class="control"><span class="how">Leave kiosk mode (staff only)</span><span class="what">Press and hold the headset&rsquo;s own button until the Power menu appears, choose <b>Quit Kiosk mode</b> and enter the passcode.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Starting or stopping the screen by hand</h2>
+    <div class="card">
+      <p>The screen starts by itself when the computer is switched on. If you ever need to start or stop it yourself, use the two icons on the computer&rsquo;s desktop:</p>
+      <div class="controls">
+        <div class="control"><span class="how">Start VR Station</span><span class="what">Double-click. After a few seconds the screen shows &ldquo;Press the button to begin&rdquo; in full screen. If it is already running, nothing happens, so clicking it twice is harmless.</span></div>
+        <div class="control"><span class="how">Stop VR Station</span><span class="what">Closes the full-screen station so you can use the computer. To reach the icon while the station is showing, press <b>Ctrl + Shift + Q</b> on the keyboard instead: it closes the station straight away. (Alt + F4 does not close it, on purpose.)</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Changing the videos</h2>
+    <div class="card">
+      <p>New videos arrive as <b>.mp4</b> files (for example on a USB stick). Double-click the right icon on the computer&rsquo;s desktop and choose the file in the window that opens (or drag the file onto the icon):</p>
+      <div class="controls">
+        <div class="control"><span class="how">Replace headset film</span><span class="what">For the 360&deg; film visitors watch in the headset. The headset must be switched on and on its cable, and nobody watching. A window shows the progress and says &ldquo;Headset film replaced&rdquo; when done. Press Enter (or wait 20 seconds) and the station comes back.</span></div>
+        <div class="control"><span class="how">Replace intro video</span><span class="what">For the film on the screen before the headset. The station closes while the video is swapped; press Enter (or wait 20 seconds) and it comes back by itself. The previous intro is kept, in case you need to go back.</span></div>
+      </div>
+      <p>The station covers the whole screen, so press <b>Ctrl + Shift + Q</b> first to reach the desktop. After the replacement the station starts again by itself.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>If something goes wrong</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>What you see</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td>The play button does nothing</td><td>Check the screen shows &ldquo;Press the button to begin&rdquo; (the button is ignored during a visit). If it does, unplug the button&rsquo;s cable from the computer, plug it back in, wait 10 seconds and try again.</td></tr>
+          <tr><td>The screen says &ldquo;Connecting to the headset&hellip;&rdquo;</td><td>The headset is off or its cable is loose. Switch the headset on, check the cable at both ends, wait 10 seconds.</td></tr>
+          <tr><td>The screen stays on &ldquo;Please put on the headset&rdquo;</td><td>Normal until the headset is on the visitor&rsquo;s head: the headset senses it, and the screen then switches to the headset view by itself. If the headset first shows a VIVE screen (lens adjustment, boundary), the view comes once that is done. If nobody puts the headset on, the screen goes back to &ldquo;Press the button to begin&rdquo; after 2 minutes.</td></tr>
+          <tr><td>The headset says &ldquo;The film is missing on this device&rdquo;</td><td>The film was never copied onto this headset, or was removed. On the computer press <b>Ctrl + Shift + Q</b>, double-click <b>Replace headset film</b> and choose <b>journey.mp4</b> from the <b>content</b> folder of the installation. The message goes away by itself within a few seconds.</td></tr>
+          <tr><td>The headset shows the VIVE home screen instead of the START screen</td><td>Wait 10 seconds: the computer reopens the experience by itself. If it doesn&rsquo;t, switch the headset off and on again.</td></tr>
+          <tr><td>The headset says &ldquo;boundary lost&rdquo;, or the picture drifts and jumps</td><td>The headset can&rsquo;t see the room well. Switch on the room lights, wipe the four small cameras on the front of the headset with a soft cloth, then switch the headset off and on.</td></tr>
+          <tr><td>The headset feels hot or shows a temperature warning</td><td>Switch it off and let it cool for 15 minutes in a ventilated spot.</td></tr>
+          <tr><td>The START button in the headset is not in front of the visitor</td><td>Ask the visitor to take the headset off and put it back on. The room turns to face them each time the headset is put on.</td></tr>
+          <tr><td>The station appears on the wrong screen (for example on a laptop&rsquo;s own display)</td><td>Check the screen is switched on and its cable is in. The station moves to it by itself within a few seconds.</td></tr>
+          <tr><td>The screen shows the Windows desktop</td><td>Double-click <b>Start VR Station</b> on the desktop.</td></tr>
+          <tr><td>The picture on the screen is frozen</td><td>Press <b>Ctrl + Shift + Q</b>, then double-click <b>Start VR Station</b>. If that doesn&rsquo;t help, restart the computer (hold its power button until it switches off, wait 10 seconds, switch it on); the station starts by itself.</td></tr>
+          <tr><td>Anything else</td><td>Restart everything in this order: headset off, computer off, wait 10 seconds, computer on, headset on. Then do a test run.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Closing: end of the day</h2>
+    <div class="card">
+      <ol class="steps">
+        <li><div><div class="t">Switch off the headset and leave it on its cable.</div><div class="d">Press and hold its power button until the Power menu appears, choose <b>Power off</b>. Do not unplug it.</div></div></li>
+        <li><div><div class="t">Put the two controllers on charge</div><div class="d">with their own charging cable, so they start the day full.</div></div></li>
+        <li><div><div class="t">Switch off the computer.</div><div class="d">Press its power button once; it shuts down by itself.</div></div></li>
+        <li><div><div class="t">Switch off the screen.</div></div></li>
+      </ol>
+      <div class="note gold"><b>The headset charges from the computer only while the computer is on.</b> It is on its cable all day, so it stays charged during opening hours. If its battery is ever low in the morning, switch the computer on 30 minutes before opening.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Keep with this handbook</h2>
+    <div class="card contacts">
+      <div><span class="lbl">Kiosk passcode</span><span class="fill"></span></div>
+      <div><span class="lbl">Technical contact</span><span class="fill"></span></div>
+      <div><span class="lbl">Phone</span><span class="fill"></span></div>
+      <div><span class="lbl">Headset serial</span><span>FA66G3N00188</span></div>
+    </div>
+  </section>
+
+  <details class="tech">
+    <summary>For the technician</summary>
+    <div class="inner">
+      <p>The screen is run by <code>Deploy\visitor-station.ps1</code>, started at Windows sign-in (installed with <code>-InstallAutostart</code>); the desktop icons come from <code>-InstallShortcuts</code>. Only one copy runs at a time. Windows is set to sign in automatically and never sleep. Staff exit from the station: <code>Ctrl+Shift+Q</code>.</p>
+      <p>The station reads the headset over USB (USB debugging, &ldquo;always allow&rdquo; for this computer), starts the MOI app if it is not running, mirrors the headset view with scrcpy, and reads the button box on its COM port (Arduino Mega, 9600 baud, sends <code>PUSH_TO_PLAY</code>). What the box sends is set in <code>button-commands.txt</code> next to the station (three lines: <code>command = PUSH_TO_PLAY, START</code>, <code>port = auto</code>, <code>baud = 9600</code>): a box that sends something else only needs that file changed and the station restarted.</p>
+      <p>Film on the headset: <code>Android/data/com.gamex.moi.promiseofsafety/files/journey.mp4</code>. Intro on the computer: <code>intro.mp4</code> in the station folder, made at the screen&rsquo;s resolution (museum screen: 3096&times;1290). Full details: <code>Deploy\DEPLOYMENT.md</code>.</p>
+    </div>
+  </details>
+
+  <footer>Prepared by GameX for the Ministry of Interior museum VR experience &ldquo;The Promise of Safety&rdquo;.</footer>
+</div>

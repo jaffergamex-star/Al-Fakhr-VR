@@ -1,0 +1,337 @@
+<title>MOI PC VR Demo Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F4F6F9;
+    --paper: #FFFFFF;
+    --ink: #17202E;
+    --muted: #5A6577;
+    --line: #DCE2EA;
+    --accent: #1F63D6;
+    --accent-soft: #E6EEFC;
+    --gold: #A07C3A;
+    --gold-soft: #F6EFE2;
+    --warn: #B4491C;
+    --warn-soft: #FCEDE6;
+    --step: #0E1A2B;
+    --step-ink: #FFFFFF;
+    --wire: #7B8BA5;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0C121C;
+      --paper: #131B28;
+      --ink: #E7ECF3;
+      --muted: #9AA6B8;
+      --line: #263244;
+      --accent: #6FA2FF;
+      --accent-soft: #172A4A;
+      --gold: #D9B774;
+      --gold-soft: #2A2416;
+      --warn: #FF9A6B;
+      --warn-soft: #3A1E13;
+      --step: #6FA2FF;
+      --step-ink: #0C121C;
+      --wire: #5E6E88;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C121C;
+    --paper: #131B28;
+    --ink: #E7ECF3;
+    --muted: #9AA6B8;
+    --line: #263244;
+    --accent: #6FA2FF;
+    --accent-soft: #172A4A;
+    --gold: #D9B774;
+    --gold-soft: #2A2416;
+    --warn: #FF9A6B;
+    --warn-soft: #3A1E13;
+    --step: #6FA2FF;
+    --step-ink: #0C121C;
+    --wire: #5E6E88;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Figtree", "Segoe UI", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    padding-inline: 16px;
+    padding-block: 32px 64px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+
+  h1, h2, h3 { font-family: "Sora", "Segoe UI", system-ui, sans-serif; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; letter-spacing: -0.01em; }
+  h2 { font-size: 22px; line-height: 1.25; }
+  h3 { font-size: 16px; }
+  p { margin: 0; max-width: 68ch; }
+
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); }
+  header { display: flex; flex-direction: column; gap: 12px; }
+  header p { color: var(--muted); font-size: 17px; }
+  .who { display: flex; flex-wrap: wrap; gap: 8px; }
+  .who span { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .who span.tech { background: var(--gold-soft); color: var(--gold); }
+
+  /* The path the picture takes, computer to headset */
+  .chain { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; align-items: stretch; }
+  .link { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 12px; display: flex; flex-direction: column; gap: 6px; margin-right: 22px; }
+  .link:last-child { margin-right: 0; }
+  .link:not(:last-child)::after {
+    content: ""; position: absolute; top: 50%; right: -23px; width: 22px; height: 2px; background: var(--wire);
+  }
+  .link:not(:last-child)::before {
+    content: ""; position: absolute; top: calc(50% - 4px); right: -23px; border: 5px solid transparent; border-left-color: var(--wire); border-right: 0;
+  }
+  .link .k { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .link .n { font-family: "Sora", sans-serif; font-weight: 600; font-size: 15px; line-height: 1.25; }
+  .link .d { font-size: 13px; color: var(--muted); }
+  .link.cable { border-style: dashed; background: transparent; }
+  @media (max-width: 760px) {
+    .chain { grid-template-columns: 1fr; }
+    .link { margin-right: 0; margin-bottom: 20px; }
+    .link:last-child { margin-bottom: 0; }
+    .link:not(:last-child)::after { top: auto; bottom: -21px; right: auto; left: 28px; width: 2px; height: 20px; }
+    .link:not(:last-child)::before { top: auto; bottom: -21px; right: auto; left: 24px; border: 5px solid transparent; border-top-color: var(--wire); border-bottom: 0; }
+  }
+
+  /* The visitor's journey, as the screen and headset show it */
+  .flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 560px) { .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .screen { background: #05080D; color: #C8D7FF; border-radius: 10px; padding: 14px 12px 12px; display: flex; flex-direction: column; gap: 8px; min-height: 118px; border: 1px solid var(--line); }
+  .screen .where { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #6F7F9C; }
+  .screen .shows { font-family: "Sora", sans-serif; font-size: 15px; line-height: 1.3; color: #DCE6FF; }
+  .screen .next { margin-top: auto; font-size: 12.5px; color: #8FA3C6; }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+  section > p.lead { color: var(--muted); }
+  .card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; counter-reset: s; }
+  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 32px 1fr; gap: 14px; align-items: start; }
+  ol.steps > li::before { content: counter(s); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--step); color: var(--step-ink); font-family: "Sora", sans-serif; font-weight: 600; font-size: 15px; }
+  ol.steps .t { font-weight: 600; }
+  ol.steps .d { color: var(--muted); }
+
+  ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  ul.plain li::marker { color: var(--accent); }
+
+  .note { background: var(--accent-soft); border-radius: 10px; padding: 14px 16px; }
+  .note.gold { background: var(--gold-soft); }
+  .note.warn { background: var(--warn-soft); }
+  .note b { font-weight: 600; }
+
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .control { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .control .how { font-family: "Sora", sans-serif; font-weight: 600; font-size: 15px; }
+  .control .what { color: var(--muted); font-size: 14.5px; }
+  kbd { font-family: "Figtree", "Segoe UI", sans-serif; font-weight: 600; font-size: 13px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; background: var(--bg); color: var(--ink); white-space: nowrap; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--bg); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; width: 38%; }
+
+  .fill { display: inline-block; min-width: 180px; border-bottom: 1.5px solid var(--muted); height: 1.2em; vertical-align: bottom; }
+  .contacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .contacts div { display: flex; flex-direction: column; gap: 8px; }
+  .contacts .lbl { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  details.tech { background: var(--paper); border: 1px dashed var(--line); border-radius: 12px; padding: 16px 20px; }
+  details.tech summary { cursor: pointer; font-family: "Sora", sans-serif; font-weight: 600; }
+  details.tech summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+  details.tech .inner { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; color: var(--muted); font-size: 14.5px; }
+  code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; background: var(--bg); padding: 1px 5px; border-radius: 4px; color: var(--ink); overflow-wrap: anywhere; }
+
+  footer { color: var(--muted); font-size: 13px; }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">Ministry of Interior Museum &middot; The Promise of Safety</span>
+    <h1>PC VR demo handbook</h1>
+    <p>In this version the experience runs on the computer and is sent to the VIVE Focus Vision over a USB cable, the way a SteamVR game is. Visitors get the same journey as at the museum station: the button, the intro film, the headset, and the screen shows what they see.</p>
+    <div class="who"><span>Daily use: any staff member</span><span class="tech">One-time setup: whoever installs the computer</span></div>
+  </header>
+
+  <section>
+    <h2>How the picture reaches the headset</h2>
+    <div class="chain">
+      <div class="link"><span class="k">On the computer</span><span class="n">The Promise of Safety</span><span class="d">The experience itself, started by START PC DEMO</span></div>
+      <div class="link"><span class="k">On the computer</span><span class="n">SteamVR</span><span class="d">Takes the picture from the experience</span></div>
+      <div class="link"><span class="k">On the computer</span><span class="n">VIVE Hub</span><span class="d">Sends it down the cable (VIVE Streaming)</span></div>
+      <div class="link cable"><span class="k">Cable</span><span class="n">USB-C</span><span class="d">From the headset to a USB&nbsp;3 port on the back of the computer</span></div>
+      <div class="link"><span class="k">Worn by the visitor</span><span class="n">VIVE Focus Vision</span><span class="d">Shows the picture and reads the controllers</span></div>
+    </div>
+    <p class="lead">All five must be in place before a visitor starts. If the headset shows the SteamVR home instead of the museum room, one link in this chain is missing (see &ldquo;If something goes wrong&rdquo;).</p>
+  </section>
+
+  <section>
+    <h2>What a visitor experiences</h2>
+    <div class="flow">
+      <div class="screen"><span class="where">Screen</span><span class="shows">Press the button to begin</span><span class="next">Visitor presses the play button</span></div>
+      <div class="screen"><span class="where">Screen</span><span class="shows">Intro film plays</span><span class="next">About 2 minutes</span></div>
+      <div class="screen"><span class="where">Screen</span><span class="shows">Please put on the headset</span><span class="next">Help the visitor put it on (the view also comes if it goes on earlier)</span></div>
+      <div class="screen"><span class="where">Headset + screen</span><span class="shows">Museum room with a crystal and a START button</span><span class="next">Visitor presses START</span></div>
+      <div class="screen"><span class="where">Headset + screen</span><span class="shows">The 360&deg; film plays in 8K; the screen shows what the visitor sees</span><span class="next">About 2&frac12; minutes</span></div>
+      <div class="screen"><span class="where">Screen</span><span class="shows">Back to &ldquo;Press the button to begin&rdquo;</span><span class="next">Headset off for 5 seconds: the experience restarts for the next visitor</span></div>
+    </div>
+    <div class="card">
+      <h3>How the visitor presses START in the headset</h3>
+      <ul class="plain">
+        <li>Point either hand controller at START (a thin light beam appears) and pull the trigger under the index finger, <b>or</b></li>
+        <li>simply look at START for 2 seconds. Useful for visitors who are not holding the controllers.</li>
+      </ul>
+      <p>The headset decides the flow: <b>putting it on at any time</b> shows the headset view straight away, also while &ldquo;Press the button to begin&rdquo; is showing or during the intro (the intro then stops). <b>Taking it off</b>, at START or during the film, brings the screen back to &ldquo;Press the button to begin&rdquo; after 5 seconds and restarts the experience for the next visitor. Lifting it for a moment and putting it straight back on changes nothing.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>One-time setup on the computer</h2>
+    <p class="lead">Done once, by whoever installs the computer. It needs an internet connection for the downloads.</p>
+    <div class="card">
+      <ol class="steps">
+        <li><div><div class="t">Update the graphics driver.</div><div class="d">The computer has an NVIDIA RTX 5080. Install the latest driver from nvidia.com or with the NVIDIA App.</div></div></li>
+        <li><div><div class="t">Install VIVE Hub.</div><div class="d">HTC&rsquo;s free program for the headset, from vive.com. It contains VIVE Streaming, which sends the picture down the cable. Open it once and let it finish its first-time setup.</div></div></li>
+        <li><div><div class="t">Install Steam, then SteamVR.</div><div class="d">Both free. Install Steam from store.steampowered.com, sign in, and install SteamVR from inside Steam.</div></div></li>
+        <li><div><div class="t">Install &ldquo;HEVC Video Extensions&rdquo;.</div><div class="d">From the Microsoft Store. The films are in HEVC format; without this, the film stays black.</div></div></li>
+        <li><div><div class="t">Copy and unzip the demo.</div><div class="d">Copy <b>MOI_PC_Demo.zip</b> to the computer. Right-click it &rsaquo; <b>Properties</b> &rsaquo; tick <b>Unblock</b> &rsaquo; OK. Then unzip it to a simple place such as <b>C:\MOI_PC_Demo</b> and keep everything in that folder together.</div></div></li>
+        <li><div><div class="t">Put START PC DEMO on the desktop.</div><div class="d">In the folder, right-click <b>START PC DEMO</b> &rsaquo; <b>Send to</b> &rsaquo; <b>Desktop (create shortcut)</b> (on Windows&nbsp;11, <b>Send to</b> is under <b>Show more options</b>). Staff then start the demo from the desktop.</div></div></li>
+        <li><div><div class="t">Run the check.</div><div class="d">Double-click <b>START PC DEMO</b>. It checks the computer and lists anything missing. If it says &ldquo;No VR runtime is set&rdquo;: open SteamVR &rsaquo; <b>Settings</b> &rsaquo; <b>OpenXR</b> &rsaquo; <b>Set SteamVR as OpenXR runtime</b>, then try again.</div></div></li>
+      </ol>
+      <div class="note"><b>&ldquo;Windows protected your PC&rdquo;?</b> The first time the demo starts, Windows may show this because the program is not signed. Click <b>More info</b>, then <b>Run anyway</b>. It does not ask again.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>On the headset: turn kiosk mode off</h2>
+    <p class="lead">For the museum station the headset is locked to the museum app (kiosk mode). The PC demo needs the headset&rsquo;s VIVE Streaming app, which kiosk mode blocks. So turn kiosk mode off on the headset used for the demo.</p>
+    <div class="card">
+      <h3>Leave kiosk mode</h3>
+      <ol class="steps">
+        <li><div><div class="t">Press and hold the headset&rsquo;s own button</div><div class="d">until the Power menu appears in front of you.</div></div></li>
+        <li><div><div class="t">Choose Quit Kiosk mode.</div></div></li>
+        <li><div><div class="t">Enter the kiosk passcode.</div><div class="d">The 4 to 8 digit code chosen when kiosk mode was set up (write it in &ldquo;Keep with this handbook&rdquo; below). The headset returns to its normal home screen.</div></div></li>
+      </ol>
+      <h3>Going back to the museum station later</h3>
+      <p>In the headset open <b>Settings</b> &rsaquo; <b>Advanced</b> &rsaquo; <b>Kiosk mode</b> and choose <b>Enter Kiosk mode</b>. The earlier choices are kept: our app only, and the same passcode.</p>
+      <div class="note gold"><b>Want to keep kiosk mode on?</b> Kiosk mode can allow more than one app. In <b>Settings &rsaquo; Advanced &rsaquo; Kiosk mode</b>, choose several apps and add <b>VIVE Streaming</b> next to the museum app, and keep <b>USB connections</b> on (it covers PC streaming). Check it once with the demo before relying on it.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Opening: start of the day</h2>
+    <div class="card">
+      <ol class="steps">
+        <li><div><div class="t">Switch on the screen and the computer.</div><div class="d">Sign in to Windows.</div></div></li>
+        <li><div><div class="t">Connect the headset.</div><div class="d">USB-C cable into the headset and into a USB&nbsp;3 or USB-C port on the back of the computer (not a hub or a front port). Switch the headset on: hold its power button for a few seconds. Switch on both controllers with their VIVE button.</div></div></li>
+        <li><div><div class="t">Link the headset to the computer.</div><div class="d">Open <b>VIVE Hub</b> on the computer and choose the <b>USB</b> connection. In the headset, accept the &ldquo;connect to PC&rdquo; message, or open <b>VIVE Streaming</b> from the Library. When the headset shows the SteamVR home, it is linked. If SteamVR does not open on the computer by itself, open it.</div></div></li>
+        <li><div><div class="t">Double-click START PC DEMO.</div><div class="d">A small window checks the computer for a few seconds, then the screen shows <b>&ldquo;Press the button to begin&rdquo;</b> in full screen and the headset shows the museum room with START.</div></div></li>
+        <li><div><div class="t">Do one test run yourself.</div><div class="d">Press the play button, watch the intro, put the headset on when asked. The screen should show your view, with START in front of you. Press START and watch a few seconds of the film.</div></div></li>
+      </ol>
+      <div class="note"><b>The demo is ready</b> when the screen shows &ldquo;Press the button to begin&rdquo; and the test run worked. If the headset was connected only after START PC DEMO, wait 10 seconds: the experience finds the headset by itself.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Between visitors</h2>
+    <div class="card">
+      <ul class="plain">
+        <li>Wipe the face cushion and the controller grips with a hygiene wipe.</li>
+        <li>Clean the lenses only with a dry microfibre cloth, never with wipes or liquid.</li>
+        <li>Put the headset down with the lenses facing away from windows and bright lights. Sunlight on the lenses can damage the screens inside.</li>
+        <li>Mind the cable: help the visitor keep it behind them, and don&rsquo;t let anyone step on it or pull it out of the computer.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Staff controls</h2>
+    <div class="controls">
+      <div class="control"><span class="how">Play button, or <kbd>F9</kbd> on the keyboard</span><span class="what">Starts a visit when the screen shows &ldquo;Press the button to begin&rdquo;. Ignored during a visit.</span></div>
+      <div class="control"><span class="how">Hold the left controller&rsquo;s Menu button for 2 seconds</span><span class="what">(or squeeze both side grips). Back to the START room, turned to face the visitor, even in the middle of the film.</span></div>
+      <div class="control"><span class="how">Keep holding for 6 seconds</span><span class="what">Restarts the experience. Use it if the picture in the headset looks wrong.</span></div>
+      <div class="control"><span class="how"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd></span><span class="what">Closes the demo: the full-screen station and the experience. (<kbd>Alt</kbd> + <kbd>F4</kbd> does not close it, on purpose.)</span></div>
+      <div class="control"><span class="how"><kbd>Space</kbd> on the keyboard</span><span class="what">Presses START for the visitor, while the screen shows the headset view.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The film: 8K</h2>
+    <div class="card">
+      <p><b>START PC DEMO</b> plays the film in 8K (7680&times;3840), the sharpest picture, which this computer&rsquo;s graphics card plays easily.</p>
+      <p>It is the same film file as in the museum headsets, so visitors see the same picture quality in both versions.</p>
+      <div class="note gold"><b>Replacing a video.</b> Close the demo first. The intro is <b>intro.mp4</b> in the demo folder; the film is <b>MOI_PromiseOfSafety\content\journey.mp4</b>. Replace the file with one of the same name. The film must be 8-bit HEVC (the current one, the client&rsquo;s AlFakher_New, is); a 10-bit file freezes on the first frame in Windows&rsquo; video player.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>If something goes wrong</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>What you see</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td>The headset shows the SteamVR home, not the museum room</td><td>Wait 10 seconds: the experience looks for the headset by itself. If it still doesn&rsquo;t appear, press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd>, check SteamVR is the OpenXR runtime (setup step 7), and double-click START PC DEMO again.</td></tr>
+          <tr><td>The headset won&rsquo;t link to the computer, or VIVE Streaming is missing in the headset</td><td>Kiosk mode is probably still on: leave it (see above). Check the cable is in a USB&nbsp;3 port on the back of the computer, unplug and replug it, and choose USB again in VIVE Hub.</td></tr>
+          <tr><td>The headset and screen say &ldquo;The film is missing on this device&rdquo;</td><td>The film file is gone from the demo folder. Copy <b>MOI_PromiseOfSafety\content\journey.mp4</b> back from the zip. The message goes away by itself within a few seconds.</td></tr>
+          <tr><td>The film stays black</td><td>Install &ldquo;HEVC Video Extensions&rdquo; from the Microsoft Store, and update the graphics driver (setup step 1).</td></tr>
+          <tr><td>The headset goes black for a few seconds, then the room comes back</td><td>The experience closed (usually SteamVR&rsquo;s link) and the demo started it again by itself. Once in a while is harmless. If it happens often, tell the technician: the graphics driver and SteamVR on the computer need updating.</td></tr>
+          <tr><td>The picture in the headset stutters or looks blurry</td><td>Use a USB&nbsp;3 port on the back of the computer (not a hub). In VIVE Hub, lower the streaming quality one step.</td></tr>
+          <tr><td>The play button does nothing</td><td>Check the screen shows &ldquo;Press the button to begin&rdquo; (the button is ignored during a visit). Press <kbd>F9</kbd> instead, then unplug and replug the button&rsquo;s cable and wait 10 seconds.</td></tr>
+          <tr><td>The screen stays on &ldquo;Please put on the headset&rdquo; for long</td><td>It switches to the headset view as soon as the headset is on. If the screen says &ldquo;Connecting to the headset&hellip;&rdquo;, the experience is restarting: wait 10 seconds.</td></tr>
+          <tr><td>Putting the headset on does nothing, or taking it off doesn&rsquo;t end the visit</td><td>SteamVR isn&rsquo;t passing on the headset&rsquo;s wear sensor. The demo still works with the button and the intro: the headset view comes 12 seconds after the intro, and the visit ends when the film ends. Tell the technician (the app&rsquo;s log says whether the wear sensor is available).</td></tr>
+          <tr><td>START is not in front of the visitor</td><td>Hold the left controller&rsquo;s Menu button for 2 seconds: the room turns to face them.</td></tr>
+          <tr><td>&ldquo;Windows protected your PC&rdquo;</td><td>Click <b>More info</b>, then <b>Run anyway</b>.</td></tr>
+          <tr><td>The screen shows the Windows desktop</td><td>Double-click <b>START PC DEMO</b>.</td></tr>
+          <tr><td>Anything else</td><td>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd>. Close SteamVR and VIVE Hub, switch the headset off and on, link it again (opening step 3), then START PC DEMO. Still wrong: restart the computer.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Closing: end of the day</h2>
+    <div class="card">
+      <ol class="steps">
+        <li><div><div class="t">Close the demo</div><div class="d">with <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd>.</div></div></li>
+        <li><div><div class="t">Switch off the headset.</div><div class="d">Hold its power button until the Power menu appears, choose <b>Power off</b>. It can stay on its cable.</div></div></li>
+        <li><div><div class="t">Put the two controllers on charge</div><div class="d">with their own charging cable, so they start the day full.</div></div></li>
+        <li><div><div class="t">Shut down the computer and switch off the screen.</div></div></li>
+      </ol>
+      <div class="note gold"><b>The headset charges slowly from the computer while streaming.</b> For a full day of demos, charge it overnight so it starts the day full.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Keep with this handbook</h2>
+    <div class="card contacts">
+      <div><span class="lbl">Kiosk passcode</span><span class="fill"></span></div>
+      <div><span class="lbl">Technical contact</span><span class="fill"></span></div>
+      <div><span class="lbl">Phone</span><span class="fill"></span></div>
+      <div><span class="lbl">Demo folder</span><span>C:\MOI_PC_Demo</span></div>
+    </div>
+  </section>
+
+  <details class="tech">
+    <summary>For the technician</summary>
+    <div class="inner">
+      <p><b>START PC DEMO</b> runs <code>start-pc-demo.ps1</code>: it checks the OpenXR runtime (registry <code>HKLM\SOFTWARE\Khronos\OpenXR\1\ActiveRuntime</code>), SteamVR, the HEVC extension, the film, the intro and the GPU, then starts <code>visitor-station.ps1 -PcApp "MOI_PromiseOfSafety\MOI_PromiseOfSafety.exe"</code>. Options: <code>-Check</code>, <code>-AppOnly</code> (the experience alone, no station).</p>
+      <p>In PC mode the station starts the experience as a borderless window the size of the screen and uses it as the mirror, keeps it running, reads its status from <code>%USERPROFILE%\AppData\LocalLow\GameX\MOI Promise of Safety\status.txt</code>, and reads the button box on its COM port (<code>PUSH_TO_PLAY</code>, 9600 baud) or <kbd>F9</kbd>. Closing the station closes the experience.</p>
+      <p>The experience is a Unity 6 Windows build (OpenXR, DirectX&nbsp;11). With no VR runtime at start it runs in a window capped at 60&nbsp;fps and retries the runtime every 10&nbsp;s. Its log writes the film&rsquo;s real frame rate every 5&nbsp;s, e.g. <code>[MOI] Film 7680x3840 at 20 s: 30.0 fps, 0 frame(s) dropped</code>.</p>
+      <p>Logs: <code>logs\</code> in the demo folder (station) and <code>Player.log</code> next to <code>status.txt</code> (experience). Full notes: <code>README-PC-DEMO.txt</code> in the demo folder.</p>
+    </div>
+  </details>
+
+  <footer>Prepared by GameX for the Ministry of Interior museum VR experience &ldquo;The Promise of Safety&rdquo;.</footer>
+</div>

@@ -1,0 +1,3 @@
+command = PUSH_TO_PLAY, START
+port = auto
+baud = 9600

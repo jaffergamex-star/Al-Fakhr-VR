@@ -1,0 +1,10 @@
+{
+  "version": "test-film-01",
+  "layout": "Mono360",
+  "yaw": 0,
+  "video": {
+    "url": "journey_test360.mp4",
+    "bytes": 25896778,
+    "sha256": "454b1ce62496ce34fa4f6e8e2b3f6d9d50bb8852b2fb144afd3a2ae9bf3e3894"
+  }
+}
