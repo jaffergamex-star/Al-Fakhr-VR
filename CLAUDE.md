@@ -122,10 +122,9 @@ incl. "headset on during the intro -> intro stops, view shows"); the PC demo has
 1. **PC demo: headset down -> "Press the button" - SOLVED 2026-09-30 on the ASUS PC** with the proximity sensor (see the
    rule above). The SteamVR-state version failed there live (worn=True from the start, Ready throughout, no reset in 60 s).
    Live with the sensor: on -> view in the same second, off during the film -> "Press the button" + app reset after 5 s
-   (3 of 3), on during the intro -> intro stops. Not yet tried: off in the view BEFORE a film, and the headset left on the
-   table for a minute after a reset (the ASUS app build still starts on a look; the station ignores a film that starts
-   while the sensor says off and resets the app). The Desktop package `MOI_PC_Demo_2026-09-29` on the ASUS has the new
-   station; `Delivery/MOI_PC_Demo(.zip)` does not.
+   (3 of 3), on during the intro -> intro stops, off in the view before a film -> Waiting + reset after 5 s (2 of 2),
+   headset left on the table after a reset -> no film started in over 3 minutes. All checks passed. The Desktop package
+   `MOI_PC_Demo_2026-09-29` on the ASUS has the new station; `Delivery/MOI_PC_Demo(.zip)` does not.
    2026-09-29 ~23:40: `Delivery/MOI_VR_Station.zip` rebuilt on request (762 MB; copy in the laptop's Downloads): APK
    23:21 (START video + invisible hotspot, zoom out 35-36 s, controller-only start, presence polling on the headset,
    no debug text), film `Al_Fakhr_Final_Version_360`, station with adb fix + `button-commands.txt`,
