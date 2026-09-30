@@ -55,6 +55,8 @@
       -MirrorFps 30            mirror frame rate (the film is 30 fps)
       -MirrorAudio             also play the headset's sound on the PC during the mirror
       -ShowStatus              keep the small grey status line visible in full-screen mode (hidden by default)
+      -ScreenColor "#00C8E0"   colour of the "Press the button" and "Please put on the headset" screen (#RRGGBB or a name
+      -TextColor "#0A2540"     like White, Gold); the text colour. Default since 2026-09-30: bright cyan with dark navy text
       -InstallAutostart / -RemoveAutostart   start this at Windows logon (keeps the options you pass with it)
   Test on a desktop without the button:
       -Windowed -AutoPressAfter 3 -QuitAfter 30
@@ -120,6 +122,9 @@ param(
     [int]$MirrorFps = 30,
     [string]$Serial = "",
     [string]$WaitingText = "Press the button to begin",
+    # Colour of the "Press the button" / "Please put on the headset" screen and of its text (#RRGGBB or a colour name).
+    [string]$ScreenColor = "#00C8E0",
+    [string]$TextColor = "#0A2540",
     [string]$WearText = "Please put on the headset",
     [switch]$Windowed,
     [switch]$ShowStatus,
@@ -788,10 +793,16 @@ $media.LoadedBehavior = "Manual"; $media.UnloadedBehavior = "Stop"
 # Whole video with bars when its shape differs from the screen; -IntroFill crops it to fill the screen instead.
 $media.Stretch = if ($IntroFill) { "UniformToFill" } else { "Uniform" }
 $cover = New-Object System.Windows.Shapes.Rectangle
-$cover.Fill = [System.Windows.Media.Brushes]::Black
+# The waiting screens: -ScreenColor / -TextColor (a wrong value falls back to black / light blue). The window itself stays
+# black, so an intro of another shape than the screen gets black bars.
+function ColorBrush($value, $fallback) {
+    try { return New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString($value)) }
+    catch { return New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString($fallback)) }
+}
+$cover.Fill = ColorBrush $ScreenColor "#000000"
 $text = New-Object System.Windows.Controls.TextBlock
-$text.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(200, 215, 255))
-$text.FontSize = 56; $text.FontFamily = "Segoe UI"; $text.TextAlignment = "Center"; $text.TextWrapping = "Wrap"
+$text.Foreground = ColorBrush $TextColor "#C8D7FF"
+$text.FontSize = 56; $text.FontFamily = "Segoe UI"; $text.FontWeight = "SemiBold"; $text.TextAlignment = "Center"; $text.TextWrapping = "Wrap"
 $text.HorizontalAlignment = "Center"; $text.VerticalAlignment = "Center"
 $status = New-Object System.Windows.Controls.TextBlock
 $status.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(70, 80, 100))
