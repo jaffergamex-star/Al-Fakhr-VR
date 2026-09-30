@@ -135,3 +135,11 @@ incl. "headset on during the intro -> intro stops, view shows"); the PC demo has
 - Warn before tests that take over the screen; they often use the PC while tests run and it skews results.
 - The user moves builds between PCs by hand (Downloads / Desktop); they said they will copy builds themselves.
 - No git repo here; keep a `before-*` copy of a file before big edits to `visitor-station.ps1`.
+
+## Videos are NOT in git (the user copies them by hand)
+- `Assets/StreamingAssets/StartScreen360.mp4` = the client's `Al_Fakhr_Intro_360.mp4` (8.2 s, 8K) - needed to BUILD the app
+  (without it the START screen falls back to the museum room). Its `.meta` is in git, so drop the file in and Unity keeps its id.
+- `Deploy/intro.mp4` = the PC-screen intro (currently a 1920x1080 placeholder, 30 MB) - needed to run/package the station.
+- Film: `Al_Fakhr_Final_Version_360.mp4` (666 MB) -> `content/journey.mp4` in the packages and on the headsets; not in the project.
+- `ContentServer/journey_test360.mp4` = an old test film, optional.
+Also not in git: `Library`, `Builds`, `Delivery` (packages), `Review`, logs, `Deploy/*.before-*.ps1` backups.
