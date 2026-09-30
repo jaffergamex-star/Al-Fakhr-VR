@@ -47,6 +47,12 @@
       -Portrait                portrait layout (automatic when the screen is taller than wide, e.g. 4K 2160x3840)
       -MirrorWidth 1920        mirror stream size, longest side (default: 1280 on screens up to full HD wide, else
                                the slice's full size up to about 2 megapixels - same load as a full-HD stream)
+      -MirrorBitRate 20M       mirror picture quality: the stream's bit rate (was 6M until 2026-09-30 - blocky and smeared
+                               on the moving 360 film; at the museum's 3096x1290 LED the slice is 2048x856 at 30 fps, and 6M
+                               is only ~0.11 bit per pixel). Costs the headset's encoder almost nothing (size and fps do).
+      -MirrorCodec h264        mirror stream codec: h264 | h265 | av1 (h265 = better picture for the same bit rate, if the
+                               headset's encoder has it; Deploy\dev-tools\MIRROR QUALITY TEST.bat compares them)
+      -MirrorFps 30            mirror frame rate (the film is 30 fps)
       -MirrorAudio             also play the headset's sound on the PC during the mirror
       -ShowStatus              keep the small grey status line visible in full-screen mode (hidden by default)
       -InstallAutostart / -RemoveAutostart   start this at Windows logon (keeps the options you pass with it)
@@ -100,6 +106,9 @@ param(
     [switch]$IntroFill,
     [int]$MirrorWidth = 1280,
     [double]$MirrorCentre = 0.578,
+    [string]$MirrorBitRate = "20M",
+    [ValidateSet("h264", "h265", "av1")] [string]$MirrorCodec = "h264",
+    [int]$MirrorFps = 30,
     [string]$Serial = "",
     [string]$WaitingText = "Press the button to begin",
     [string]$WearText = "Please put on the headset",
@@ -593,7 +602,7 @@ if ($MirrorCropFor) {
     $hs = @(& $Adb devices 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "\tdevice$" } | ForEach-Object { ($_ -split "\t")[0] })
     if (-not $hs) { Write-Host "Connect the headset first (the slice depends on its display)."; exit 1 }
     $c = if ($Crop) { $Crop } else { Get-OneEyeCrop $hs[0] }
-    Write-Host ("Screen {0}: mirror slice {1} (width:height:x:y of the headset's left eye), streamed at up to {2} px" -f $MirrorCropFor, $c, (Get-MirrorSize $c))
+    Write-Host ("Screen {0}: mirror slice {1} (width:height:x:y of the headset's left eye), streamed at up to {2} px, {3} {4}bit/s {5} fps" -f $MirrorCropFor, $c, (Get-MirrorSize $c), $MirrorCodec, $MirrorBitRate, $MirrorFps)
     exit 0
 }
 
@@ -929,7 +938,8 @@ function Ensure-Scrcpy {
     $c = $Crop
     if (-not $c) { $c = Get-OneEyeCrop $S.headset }
     $ms = Get-MirrorSize $c
-    $a = @("-s", $S.headset, "--no-control", "--max-size", "$ms", "--max-fps", "30", "--video-bit-rate", "6M",
+    $a = @("-s", $S.headset, "--no-control", "--max-size", "$ms", "--max-fps", "$MirrorFps", "--video-bit-rate", $MirrorBitRate,
+              "--video-codec=$MirrorCodec",
               "--window-title", "`"MOI headset`"", "--window-borderless",
               "--window-x", "$($bounds.X)", "--window-y", "$($bounds.Y)",
               "--window-width", "$($bounds.Width)", "--window-height", "$($bounds.Height)")
@@ -944,7 +954,7 @@ function Ensure-Scrcpy {
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
     $S.scrcpy = [System.Diagnostics.Process]::Start($psi)
-    Log ("mirror started for {0}: headset view slice {1}, streamed at up to {2} px" -f $S.headset, $(if ($c) { $c } else { "none" }), $ms)
+    Log ("mirror started for {0}: headset view slice {1}, streamed at up to {2} px, {3} {4}bit/s {5} fps" -f $S.headset, $(if ($c) { $c } else { "none" }), $ms, $MirrorCodec, $MirrorBitRate, $MirrorFps)
     return $true
 }
 
