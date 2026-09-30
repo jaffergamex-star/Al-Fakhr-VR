@@ -88,6 +88,9 @@
       -PcAppSoundAlways    (with -PcApp) keep the app's sound on all the time. Default: the app is heard only in the headset
                            view while the headset is on; at "Press the button", the intro and "Please put on the headset"
                            the station mutes it in the Windows volume mixer (the intro keeps its own sound).
+      -PcAppTearing        (with -PcApp) start the app with Unity's default window mode. Default: -force-d3d11-bitblt-model,
+                           so Windows draws the app's window in step with the screen (no tearing: the picture broke into
+                           shifted strips when the visitor turned the head, 2026-10-01)
       -NoSteamVr           (with -PcApp) don't use SteamVR's own state (Ready / Standby, from its log vrmonitor.txt) as a
                            second "headset worn" signal next to the app's wear sensor
       -SteamVrLog <file>   (with -PcApp) read this SteamVR log instead of <Steam>\logs\vrmonitor.txt (for tests)
@@ -144,6 +147,7 @@ param(
     [string]$SteamVrLog = "",
     [switch]$NoProximity,
     [switch]$PcAppSoundAlways,
+    [switch]$PcAppTearing,
     [int]$AutoPressAfter = 0,
     [int]$QuitAfter = 0,
     [string]$SerialPort = "auto",
@@ -1119,6 +1123,11 @@ function Ensure-PcApp {
     # Borderless window the size of the VR screen (Place-PcApp puts it on it).
     $extra = $PcAppArgs
     if ($PcFilm) { $extra = "-film `"$PcFilm`" $extra" }
+    # -force-d3d11-bitblt-model: the window goes through Windows' compositor, which shows it in step with the screen. With
+    # Unity's default (DXGI flip model, no vsync - the headset sets the pace, 90 frames a second) a borderless window
+    # covering the screen skips the compositor and tears: moving pictures break into shifted strips (the controller ray
+    # "cut into pieces" when the visitor turns, user 2026-10-01). -PcAppTearing leaves Unity's default.
+    if (-not $PcAppTearing) { $extra = "-force-d3d11-bitblt-model $extra" }
     $psi.Arguments = ("-screen-fullscreen 0 -popupwindow -screen-width {0} -screen-height {1} {2}" -f $bounds.Width, $bounds.Height, $extra).Trim()
     $psi.UseShellExecute = $false
     # VIVE Hub adds four OpenXR add-on layers (hand, face, passthrough, tracker) to every VR app. The app uses none
