@@ -773,6 +773,137 @@ $dpi = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width / [System.Windo
 # Sets $bounds (where the station and mirror go) and $IsPortrait (tall layout); the mirror slice follows its shape.
 Apply-Screen (Select-VrScreen) -Quiet
 
+# ---------------------------------------------------------------- the waiting screens' look
+function ColorBrush($value, $fallback) {
+    try { return New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString($value)) }
+    catch { return New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString($fallback)) }
+}
+function Shade([System.Windows.Media.Color]$c, [double]$k, [byte]$alpha = 255) {
+    # k > 0 lighter (towards white), k < 0 darker (towards black)
+    $f = { param($v) if ($k -ge 0) { [byte]($v + (255 - $v) * $k) } else { [byte]($v * (1 + $k)) } }
+    return [System.Windows.Media.Color]::FromArgb($alpha, (& $f $c.R), (& $f $c.G), (& $f $c.B))
+}
+# "Futuristic" (user, 2026-09-30): the screen colour lit from the centre, a faint HUD grid, a slow scan line, the text in a
+# thin frame with corner brackets like the START panel in the headset, a softly pulsing glow, a light running along a bar
+# under the text, and two small status labels. Returns the cover (full screen, shown/hidden by the state machine), the
+# panel with the given text block in it (shown whenever the text is), and Resize (called with the window size).
+function New-StationLook($screenColor, $textColor, $text) {
+    $W = [System.Windows.Media.Color]::FromRgb(255, 255, 255)
+    $base = (ColorBrush $screenColor "#000000").Color
+    $ink = (ColorBrush $textColor "#C8D7FF").Color
+    $inkBrush = New-Object System.Windows.Media.SolidColorBrush $ink
+    $B = { param($c) New-Object System.Windows.Media.SolidColorBrush $c }
+
+    $cover = New-Object System.Windows.Controls.Grid
+    $cover.ClipToBounds = $true
+    $bg = New-Object System.Windows.Shapes.Rectangle
+    $rad = New-Object System.Windows.Media.RadialGradientBrush
+    $rad.Center = "0.5,0.45"; $rad.GradientOrigin = "0.5,0.45"; $rad.RadiusX = 0.85; $rad.RadiusY = 0.95
+    $rad.GradientStops.Add((New-Object System.Windows.Media.GradientStop (Shade $base 0.45), 0.0))
+    $rad.GradientStops.Add((New-Object System.Windows.Media.GradientStop $base, 0.55))
+    $rad.GradientStops.Add((New-Object System.Windows.Media.GradientStop (Shade $base -0.45), 1.0))
+    $bg.Fill = $rad
+    [void]$cover.Children.Add($bg)
+    # HUD grid: 1-px lines every 64 px (resized with the screen)
+    $gridLines = New-Object System.Windows.Shapes.Rectangle
+    $pen = New-Object System.Windows.Media.Pen ((& $B ([System.Windows.Media.Color]::FromArgb(34, 255, 255, 255)))), 1
+    $cell = New-Object System.Windows.Media.GeometryDrawing $null, $pen, ([System.Windows.Media.Geometry]::Parse("M0,0 L64,0 M0,0 L0,64"))
+    $tile = New-Object System.Windows.Media.DrawingBrush $cell
+    $tile.TileMode = "Tile"; $tile.ViewportUnits = "Absolute"; $tile.Viewport = "0,0,64,64"; $tile.ViewboxUnits = "Absolute"; $tile.Viewbox = "0,0,64,64"
+    $gridLines.Fill = $tile
+    [void]$cover.Children.Add($gridLines)
+    # scan line: a soft light band moving down the screen every 6 s
+    $scan = New-Object System.Windows.Shapes.Rectangle
+    $scan.VerticalAlignment = "Top"; $scan.Height = 160; $scan.IsHitTestVisible = $false
+    $lin = New-Object System.Windows.Media.LinearGradientBrush
+    $lin.StartPoint = "0,0"; $lin.EndPoint = "0,1"
+    $lin.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.Color]::FromArgb(0, 255, 255, 255)), 0.0))
+    $lin.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.Color]::FromArgb(60, 255, 255, 255)), 0.5))
+    $lin.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.Color]::FromArgb(0, 255, 255, 255)), 1.0))
+    $scan.Fill = $lin
+    $scanMove = New-Object System.Windows.Media.TranslateTransform
+    $scan.RenderTransform = $scanMove
+    [void]$cover.Children.Add($scan)
+    # small labels in the bottom corners
+    $mk = { param($t, $h) $l = New-Object System.Windows.Controls.TextBlock; $l.Text = $t; $l.FontFamily = "Bahnschrift"; $l.Foreground = $inkBrush; $l.Opacity = 0.7
+            $l.HorizontalAlignment = $h; $l.VerticalAlignment = "Bottom"; $l; }
+    $tagLeft = & $mk "THE PROMISE OF SAFETY  //  VR EXPERIENCE" "Left"
+    $tagRight = & $mk "SYSTEM READY" "Right"
+    [void]$cover.Children.Add($tagLeft); [void]$cover.Children.Add($tagRight)
+    $blink = New-Object System.Windows.Media.Animation.DoubleAnimation 1.0, 0.25, ([System.Windows.Duration][TimeSpan]::FromSeconds(0.9))
+    $blink.AutoReverse = $true; $blink.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+    $tagRight.BeginAnimation([System.Windows.UIElement]::OpacityProperty, $blink)
+
+    # the text in its frame
+    $text.Foreground = $inkBrush; $text.FontFamily = "Bahnschrift"; $text.FontWeight = "SemiBold"
+    $text.TextAlignment = "Center"; $text.TextWrapping = "Wrap"; $text.HorizontalAlignment = "Center"; $text.VerticalAlignment = "Center"
+    $glow = New-Object System.Windows.Media.Effects.DropShadowEffect
+    $glow.Color = $W; $glow.ShadowDepth = 0; $glow.BlurRadius = 22; $glow.Opacity = 0.5
+    $text.Effect = $glow
+    $pulse = New-Object System.Windows.Media.Animation.DoubleAnimation 0.25, 0.95, ([System.Windows.Duration][TimeSpan]::FromSeconds(1.6))
+    $pulse.AutoReverse = $true; $pulse.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+    $pulse.EasingFunction = New-Object System.Windows.Media.Animation.SineEase
+    $glow.BeginAnimation([System.Windows.Media.Effects.DropShadowEffect]::OpacityProperty, $pulse)
+
+    $panel = New-Object System.Windows.Controls.Grid
+    $panel.HorizontalAlignment = "Center"; $panel.VerticalAlignment = "Center"
+    $frame = New-Object System.Windows.Controls.Border
+    $frame.BorderBrush = & $B ([System.Windows.Media.Color]::FromArgb(170, 255, 255, 255))
+    $frame.Background = & $B ([System.Windows.Media.Color]::FromArgb(40, 255, 255, 255))
+    $stack = New-Object System.Windows.Controls.StackPanel
+    $top = & $mk "// VIRTUAL REALITY EXPERIENCE //" "Center"; $top.VerticalAlignment = "Top"; $top.Opacity = 0.75
+    $bar = New-Object System.Windows.Controls.Grid
+    $bar.ClipToBounds = $true
+    $track = New-Object System.Windows.Shapes.Rectangle; $track.Fill = & $B ([System.Windows.Media.Color]::FromArgb(70, $ink.R, $ink.G, $ink.B))
+    $runner = New-Object System.Windows.Shapes.Rectangle; $runner.HorizontalAlignment = "Left"
+    $rg = New-Object System.Windows.Media.LinearGradientBrush; $rg.StartPoint = "0,0"; $rg.EndPoint = "1,0"
+    $rg.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.Color]::FromArgb(0, 255, 255, 255)), 0.0))
+    $rg.GradientStops.Add((New-Object System.Windows.Media.GradientStop $W, 0.5))
+    $rg.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.Color]::FromArgb(0, 255, 255, 255)), 1.0))
+    $runner.Fill = $rg
+    $runMove = New-Object System.Windows.Media.TranslateTransform; $runner.RenderTransform = $runMove
+    [void]$bar.Children.Add($track); [void]$bar.Children.Add($runner)
+    [void]$stack.Children.Add($top); [void]$stack.Children.Add($text); [void]$stack.Children.Add($bar)
+    $frame.Child = $stack
+    [void]$panel.Children.Add($frame)
+    # corner brackets, drawn in the text colour just outside the frame
+    $brackets = @()
+    foreach ($corner in @(@("Left", "Top", 1, 1), @("Right", "Top", -1, 1), @("Left", "Bottom", 1, -1), @("Right", "Bottom", -1, -1))) {
+        $p = New-Object System.Windows.Shapes.Path
+        $p.Data = [System.Windows.Media.Geometry]::Parse("M0,1 L0,0 L1,0"); $p.Stretch = "Fill"
+        $p.Stroke = $inkBrush; $p.HorizontalAlignment = $corner[0]; $p.VerticalAlignment = $corner[1]
+        $p.RenderTransformOrigin = "0.5,0.5"; $p.RenderTransform = New-Object System.Windows.Media.ScaleTransform $corner[2], $corner[3]
+        [void]$panel.Children.Add($p); $brackets += $p
+    }
+    # the frame is shown whenever the text is (the state machine only switches the text)
+    $bind = New-Object System.Windows.Data.Binding "Visibility"; $bind.Source = $text
+    [void]$panel.SetBinding([System.Windows.UIElement]::VisibilityProperty, $bind)
+
+    $resize = {
+        param([double]$w, [double]$h)
+        if ($w -le 0 -or $h -le 0) { return }
+        $u = [Math]::Max(20, [Math]::Min($h * 0.065, $w * 0.06))
+        $text.FontSize = $u
+        $text.Margin = "0,$($u * 0.25),0,$($u * 0.35)"
+        $top.FontSize = $u * 0.28; $tagLeft.FontSize = $u * 0.26; $tagRight.FontSize = $u * 0.26
+        $tagLeft.Margin = "$($u * 0.6),0,0,$($u * 0.45)"; $tagRight.Margin = "0,0,$($u * 0.6),$($u * 0.45)"
+        $frame.Padding = "$($u * 1.1),$($u * 0.55),$($u * 1.1),$($u * 0.6)"; $frame.BorderThickness = [Math]::Max(1, $u * 0.03)
+        $bar.Height = [Math]::Max(2, $u * 0.06); $runner.Width = $u * 3
+        foreach ($p in $brackets) { $p.Width = $u * 0.55; $p.Height = $u * 0.55; $p.StrokeThickness = [Math]::Max(2, $u * 0.08); $p.Margin = "$(-$u * 0.18)" }
+        $cell = [Math]::Round($h / 20); $tile.Viewport = "0,0,$cell,$cell"
+        $scan.Height = $h * 0.18
+        $down = New-Object System.Windows.Media.Animation.DoubleAnimation (-$h * 0.2), $h, ([System.Windows.Duration][TimeSpan]::FromSeconds(6))
+        $down.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+        $scanMove.BeginAnimation([System.Windows.Media.TranslateTransform]::YProperty, $down)
+        # the light runs along the bar under the text; the bar is as wide as the text (known after layout)
+        $text.UpdateLayout(); $span = [Math]::Max($text.ActualWidth, $u * 6)
+        $run = New-Object System.Windows.Media.Animation.DoubleAnimation (-$u * 3), $span, ([System.Windows.Duration][TimeSpan]::FromSeconds(2.4))
+        $run.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
+        $runMove.BeginAnimation([System.Windows.Media.TranslateTransform]::XProperty, $run)
+    }.GetNewClosure()
+    return @{ Cover = $cover; Panel = $panel; Resize = $resize }
+}
+
 # ---------------------------------------------------------------- window
 $window = New-Object System.Windows.Window
 $window.Title = "MOI Visitor Station"
@@ -792,28 +923,21 @@ $media = New-Object System.Windows.Controls.MediaElement
 $media.LoadedBehavior = "Manual"; $media.UnloadedBehavior = "Stop"
 # Whole video with bars when its shape differs from the screen; -IntroFill crops it to fill the screen instead.
 $media.Stretch = if ($IntroFill) { "UniformToFill" } else { "Uniform" }
-$cover = New-Object System.Windows.Shapes.Rectangle
-# The waiting screens: -ScreenColor / -TextColor (a wrong value falls back to black / light blue). The window itself stays
-# black, so an intro of another shape than the screen gets black bars.
-function ColorBrush($value, $fallback) {
-    try { return New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString($value)) }
-    catch { return New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.ColorConverter]::ConvertFromString($fallback)) }
-}
-$cover.Fill = ColorBrush $ScreenColor "#000000"
+# The waiting screens ("Press the button", "Please put on the headset"): -ScreenColor / -TextColor (a wrong value falls
+# back to black / light blue). The window itself stays black, so an intro of another shape than the screen gets black bars.
 $text = New-Object System.Windows.Controls.TextBlock
-$text.Foreground = ColorBrush $TextColor "#C8D7FF"
-$text.FontSize = 56; $text.FontFamily = "Segoe UI"; $text.FontWeight = "SemiBold"; $text.TextAlignment = "Center"; $text.TextWrapping = "Wrap"
-$text.HorizontalAlignment = "Center"; $text.VerticalAlignment = "Center"
+$look = New-StationLook $ScreenColor $TextColor $text
+$cover = $look.Cover
 $status = New-Object System.Windows.Controls.TextBlock
 $status.Foreground = New-Object System.Windows.Media.SolidColorBrush ([System.Windows.Media.Color]::FromRgb(70, 80, 100))
 $status.FontSize = 14; $status.Margin = "12"; $status.HorizontalAlignment = "Left"; $status.VerticalAlignment = "Bottom"
-[void]$grid.Children.Add($media); [void]$grid.Children.Add($cover); [void]$grid.Children.Add($text); [void]$grid.Children.Add($status)
+[void]$grid.Children.Add($media); [void]$grid.Children.Add($cover); [void]$grid.Children.Add($look.Panel); [void]$grid.Children.Add($status)
 # Visitors see only the picture: the status line is for staff/testing, and the mouse pointer is hidden.
 if (-not $Windowed -and -not $ShowStatus) { $status.Visibility = "Collapsed" }
 if (-not $Windowed) { $window.Cursor = [System.Windows.Input.Cursors]::None }
 # Text scales with the screen, so it looks the same on a 1080p monitor and a 4K TV.
 $window.Add_SizeChanged({
-    $text.FontSize = [Math]::Max(20, [Math]::Min($window.ActualHeight * 0.065, $window.ActualWidth * 0.06))
+    & $look.Resize $window.ActualWidth $window.ActualHeight
     $status.FontSize = [Math]::Max(10, [Math]::Min($window.ActualHeight * 0.016, $window.ActualWidth * 0.012))
 })
 $window.Content = $grid
