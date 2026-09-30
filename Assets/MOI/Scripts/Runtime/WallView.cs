@@ -51,6 +51,8 @@ namespace MOI
             var data = go.AddComponent<UniversalAdditionalCameraData>();
             data.renderPostProcessing = false;
             data.renderShadows = false;
+            // URP decides by this flag, not by stereoTargetEye: off = this camera draws to the window, not into the headset.
+            data.allowXRRendering = false;
             m_Wall.enabled = false;
             Debug.Log($"[MOI] Wall view ready: {m_HorizontalFov:F0} degrees wide, centred on the visitor's view");
         }
