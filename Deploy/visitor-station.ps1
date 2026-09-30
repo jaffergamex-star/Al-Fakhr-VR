@@ -83,6 +83,9 @@
                            until the headset falls asleep, 3 minutes after it is put down (measured 2026-09-30).
                            Needs USB debugging on the headset and this PC allowed once. Log: "headset proximity sensor: ...".
       -NoProximity         (with -PcApp) don't read the proximity sensor (then the app's sensor + SteamVR decide)
+      -PcAppSoundAlways    (with -PcApp) keep the app's sound on all the time. Default: the app is heard only in the headset
+                           view while the headset is on; at "Press the button", the intro and "Please put on the headset"
+                           the station mutes it in the Windows volume mixer (the intro keeps its own sound).
       -NoSteamVr           (with -PcApp) don't use SteamVR's own state (Ready / Standby, from its log vrmonitor.txt) as a
                            second "headset worn" signal next to the app's wear sensor
       -SteamVrLog <file>   (with -PcApp) read this SteamVR log instead of <Steam>\logs\vrmonitor.txt (for tests)
@@ -135,6 +138,7 @@ param(
     [switch]$NoSteamVr,
     [string]$SteamVrLog = "",
     [switch]$NoProximity,
+    [switch]$PcAppSoundAlways,
     [int]$AutoPressAfter = 0,
     [int]$QuitAfter = 0,
     [string]$SerialPort = "auto",
@@ -816,6 +820,7 @@ $S = @{
     vrWorn = $null; vrWornAt = [DateTime]::MinValue; vrState = ""; vrLogPos = [long]0; vrLogHead = ""; vrStateLogged = $false
     appWorn = $null; appWornAt = [DateTime]::MinValue; wornNote = ""
     prox = $null; proxReading = $null; proxWorn = $null; proxProblem = ""; proxStarted = [DateTime]::MinValue
+    appSoundOn = $null; appSoundPid = 0; appSoundError = $false
     watcher = New-Object MoiLogWatcher; worn = $null; paused = $null; status = $null; statusRaw = ""; serial = New-Object MoiSerial; serialNextTry = [DateTime]::MinValue; serialOpenedAt = [DateTime]::MinValue; introStarted = $false; warming = $false; warmStart = [DateTime]::MinValue; warmOpenedAt = $null; rendered = $false; mirrorCheck = [DateTime]::MinValue; screenCheck = [DateTime]::Now; appNextCheck = [DateTime]::MinValue; simSent = $false; lastCheck = [DateTime]::MinValue; started = [DateTime]::Now; autoPressed = $false
 }
 
@@ -1013,6 +1018,103 @@ function Restart-PcApp($why) {
     }
     $S.pcAppExitSeen = $true; $S.pcAppNextStart = [DateTime]::MinValue
     Log "VR app restarting ($why)"
+}
+
+# PC demo: the app's sound only while the headset is worn. Windows keeps a volume per program (the volume mixer); the
+# station mutes and unmutes the app's own entries there, on every playback device, so no app change is needed and the
+# station's intro keeps its own sound. Core Audio COM: devices -> session manager -> the app's sessions -> SetMute.
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class MoiAppAudio {
+    [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumerator { }
+    [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IMMDeviceEnumerator {
+        [PreserveSig] int EnumAudioEndpoints(int dataFlow, int stateMask, out IMMDeviceCollection devices);
+    }
+    [ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IMMDeviceCollection {
+        [PreserveSig] int GetCount(out int count);
+        [PreserveSig] int Item(int index, out IMMDevice device);
+    }
+    [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IMMDevice {
+        [PreserveSig] int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object iface);
+    }
+    [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionManager2 {
+        [PreserveSig] int GetAudioSessionControl(IntPtr groupingParam, int flags, out IntPtr control);
+        [PreserveSig] int GetSimpleAudioVolume(IntPtr groupingParam, int flags, out IntPtr volume);
+        [PreserveSig] int GetSessionEnumerator(out IAudioSessionEnumerator sessions);
+    }
+    [ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionEnumerator {
+        [PreserveSig] int GetCount(out int count);
+        [PreserveSig] int GetSession(int index, [MarshalAs(UnmanagedType.IUnknown)] out object session);
+    }
+    [ComImport, Guid("bfb7ff88-7239-4fc9-8fa2-07c950be9c6d"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionControl2 {
+        [PreserveSig] int GetState(out int state);
+        [PreserveSig] int GetDisplayName(out IntPtr name);
+        [PreserveSig] int SetDisplayName(IntPtr name, IntPtr context);
+        [PreserveSig] int GetIconPath(out IntPtr path);
+        [PreserveSig] int SetIconPath(IntPtr path, IntPtr context);
+        [PreserveSig] int GetGroupingParam(out Guid param);
+        [PreserveSig] int SetGroupingParam(ref Guid param, IntPtr context);
+        [PreserveSig] int RegisterAudioSessionNotification(IntPtr client);
+        [PreserveSig] int UnregisterAudioSessionNotification(IntPtr client);
+        [PreserveSig] int GetSessionIdentifier(out IntPtr id);
+        [PreserveSig] int GetSessionInstanceIdentifier(out IntPtr id);
+        [PreserveSig] int GetProcessId(out uint pid);
+    }
+    [ComImport, Guid("87CE5498-68D6-44E5-9215-6DA47EF883D8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface ISimpleAudioVolume {
+        [PreserveSig] int SetMasterVolume(float level, ref Guid context);
+        [PreserveSig] int GetMasterVolume(out float level);
+        [PreserveSig] int SetMute(int mute, ref Guid context);
+        [PreserveSig] int GetMute(out int mute);
+    }
+    // Mutes or unmutes every sound entry of the process on every playback device. Returns how many entries it found
+    // (0 = the program has not played anything yet: Windows creates its entry with the first sound).
+    public static int SetMute(int pid, bool mute) {
+        int found = 0;
+        var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+        IMMDeviceCollection devices;
+        if (enumerator.EnumAudioEndpoints(0 /* render */, 1 /* active */, out devices) != 0) return 0;
+        int count; devices.GetCount(out count);
+        Guid managerId = typeof(IAudioSessionManager2).GUID, ctx = Guid.Empty;
+        for (int d = 0; d < count; d++) {
+            IMMDevice device; if (devices.Item(d, out device) != 0) continue;
+            object o; if (device.Activate(ref managerId, 23 /* CLSCTX_ALL */, IntPtr.Zero, out o) != 0) continue;
+            IAudioSessionEnumerator sessions; if (((IAudioSessionManager2)o).GetSessionEnumerator(out sessions) != 0) continue;
+            int n; sessions.GetCount(out n);
+            for (int i = 0; i < n; i++) {
+                object s; if (sessions.GetSession(i, out s) != 0) continue;
+                uint sp; if (((IAudioSessionControl2)s).GetProcessId(out sp) != 0 || sp != (uint)pid) continue;
+                found++;
+                var v = (ISimpleAudioVolume)s;
+                int now; v.GetMute(out now);
+                if ((now != 0) != mute) v.SetMute(mute ? 1 : 0, ref ctx);
+            }
+        }
+        return found;
+    }
+}
+"@
+
+# Every second: the app is heard only in the headset view (Mirror) while the headset is not known to be off. At "Press
+# the button", during the intro and "Please put on the headset" it is silent - the intro has the room to itself.
+function Update-PcAppSound {
+    if (-not $PcApp -or $PcAppSoundAlways) { return }
+    if (-not $S.scrcpy -or $S.scrcpy.HasExited) { $S.appSoundPid = 0; return }
+    $on = $S.state -eq "Mirror" -and $S.worn -ne $false
+    $n = 0
+    try { $n = [MoiAppAudio]::SetMute($S.scrcpy.Id, -not $on) }
+    catch { if (-not $S.appSoundError) { $S.appSoundError = $true; Log "app sound: could not set it ($($_.Exception.Message))" } }
+    if ($n -gt 0 -and ($on -ne $S.appSoundOn -or $S.appSoundPid -ne $S.scrcpy.Id)) {
+        $S.appSoundOn = $on; $S.appSoundPid = $S.scrcpy.Id
+        Log $(if ($on) { "app sound on (headset on)" } else { "app sound off (headset not on)" })
+    }
 }
 
 # PC VR demo: the app's window exactly on the VR screen. Checked every second: the app may still resize itself while
@@ -1293,7 +1395,7 @@ $timer.Add_Tick({
         if ($PcApp) { Read-SteamVrState }
         Poll-HeadsetStatus
         if ($PcApp -or -not $introNow) { [void](Ensure-Scrcpy) }
-        if ($PcApp) { Place-PcApp }
+        if ($PcApp) { Place-PcApp; Update-PcAppSound }
         if (-not $NoLaunchApp -and -not $SimulateHeadset -and -not $PcApp -and -not $introNow -and $S.headset -and $now -ge $S.appNextCheck) {
             $S.appNextCheck = $now.AddSeconds(10)
             $appPid = (& $Adb -s $S.headset shell pidof $AppPackage 2>$null) -join ""
