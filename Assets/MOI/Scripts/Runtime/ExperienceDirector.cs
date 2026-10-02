@@ -46,6 +46,8 @@ namespace MOI
         public float wornStartDelay = 2.5f;
         [Tooltip("Headset taken off mid-journey for this long returns to Idle for the next visitor.")]
         public float removedResetDelay = 8f;
+        [Tooltip("Headset off for this long during the film (app paused, or the wear sensor says off) = the film stops and the app goes back to START. Shorter lifts (adjusting the strap) change nothing.")]
+        public float filmOffRestartSeconds = 2f;
         public float outroHold = 6f;
 
         [Header("Hidden operator reset")]
@@ -183,7 +185,33 @@ namespace MOI
             Debug.Log("[MOI] PAUSED " + paused);
             m_Paused = paused;
             WriteStatus();
-            if (!paused) m_RecenterAt = Time.unscaledTime + 0.5f;
+            if (paused) { if (m_AwaySince == 0) m_AwaySince = System.DateTime.UtcNow.Ticks; }
+            else { m_RecenterAt = Time.unscaledTime + 0.5f; CheckAwayDuringFilm("paused"); }
+        }
+
+        // Some headsets also only take the focus away when they come off.
+        void OnApplicationFocus(bool focused)
+        {
+            if (!focused) { if (m_AwaySince == 0) m_AwaySince = System.DateTime.UtcNow.Ticks; }
+            else CheckAwayDuringFilm("out of focus");
+        }
+
+        // Taking the headset off usually pauses the whole app (the display sleeps): nothing runs and the film just waits,
+        // so the "off" timer in the film loop never counted and the next visitor got the rest of the film (one headset,
+        // 2026-10-02). Wall-clock time is used, which runs on while the app is paused: away for filmOffRestartSeconds or
+        // more during the film = back to START.
+        long m_AwaySince;
+
+        void CheckAwayDuringFilm(string how)
+        {
+            if (m_AwaySince == 0) return;
+            double seconds = (System.DateTime.UtcNow.Ticks - m_AwaySince) / (double)System.TimeSpan.TicksPerSecond;
+            m_AwaySince = 0;
+            if (CurrentState == State.Playing && seconds >= filmOffRestartSeconds)
+            {
+                Debug.Log($"[MOI] Headset was off ({how}) for {seconds:F1} s during the film - back to START");
+                ResetToStart();
+            }
         }
 
         // While waiting at START, turn the museum so the podium and START are straight ahead of whoever
@@ -322,7 +350,7 @@ namespace MOI
             if (m_Previous.WasPressedThisFrame()) Seek(sequence.beats[Mathf.Max(0, BeatIndex - 1)].start);
 
             m_RemovedTimer = Worn == false ? m_RemovedTimer + Time.deltaTime : 0f;
-            if (m_RemovedTimer >= removedResetDelay) { EnterIdle(); return; }
+            if (m_RemovedTimer >= Mathf.Min(removedResetDelay, filmOffRestartSeconds)) { EnterIdle(); return; }
 
             // The audio clock, not frame time, so picture can never drift from the voice-over.
             Clock = (float)(AudioSettings.dspTime - m_DspStart);
@@ -436,7 +464,8 @@ namespace MOI
                 yield return Fade(1f, 0f, 1.2f);
 
                 m_RemovedTimer = 0f;
-                while (!environments.VideoFinished && m_RemovedTimer < removedResetDelay)
+                // The wear sensor says "off" while the app keeps running: the same rule as a pause (CheckAwayDuringFilm).
+                while (!environments.VideoFinished && m_RemovedTimer < Mathf.Min(removedResetDelay, filmOffRestartSeconds))
                 {
                     Clock = (float)environments.VideoTime;
                     environments.SetZoom(zoom.ValueAt(Clock));
