@@ -57,6 +57,18 @@ namespace MOI
         public string startScreenFallbackId = "museum";
 
         bool m_StartScreenPending;
+        string m_StartScreenPath;
+
+        // Stall watch: a video that is "playing" but whose frame has not moved for StallSeconds while the app is awake. After
+        // the headset slept (taken off and left) Android can take the decoder away and the player stays stuck on one frame
+        // with its sound hanging (user, 2026-10-02). The START video is then opened again; for the film FilmStalled is raised.
+        const float StallSeconds = 3f;
+        long m_WatchFrame = -1;
+        float m_WatchAt;
+        public event System.Action FilmStalled;
+
+        /// <summary>Forget the stall watch (after a pause: the frames did not move because nothing ran).</summary>
+        public void ResetStallWatch() => m_WatchFrame = -1;
 
         Material m_Skybox;
         RenderTexture m_VideoTarget;
@@ -106,6 +118,7 @@ namespace MOI
                 videoPlayer.Play();
                 Debug.Log($"[MOI] START screen video: {videoPlayer.width}x{videoPlayer.height}, {videoPlayer.length:F1} s, looping");
             }
+            WatchForStall();
             if (!m_FilmShowing || videoPlayer == null || !videoPlayer.isPlaying) return;
             if (m_RateFrame < 0) { m_RateFrame = videoPlayer.frame; m_RateAt = Time.unscaledTime; m_Dropped = 0; return; }
             float span = Time.unscaledTime - m_RateAt;
@@ -227,10 +240,12 @@ namespace MOI
         /// The START screen: a 360 video looping with its sound on the sky, every environment object off (the START
         /// button belongs to the HUD). The sky stays black until the player has opened the file.
         /// </summary>
-        public void ShowStartScreen(string path)
+        public void ShowStartScreen(string path, bool reopen = false)
         {
             if (m_Skybox == null || videoPlayer == null) { Debug.LogWarning("[MOI] No sky material / video player for the START screen.", this); Show(startScreenFallbackId); return; }
-            if (CurrentId == StartScreenId && (m_StartScreenPending || videoPlayer.isPlaying)) return;
+            if (!reopen && CurrentId == StartScreenId && (m_StartScreenPending || videoPlayer.isPlaying)) return;
+            m_StartScreenPath = path;
+            m_WatchFrame = -1;
             CurrentId = StartScreenId;
             foreach (var e in environments)
                 if (e.root != null) e.root.SetActive(false);
@@ -252,6 +267,26 @@ namespace MOI
             videoPlayer.isLooping = true;
             videoPlayer.Prepare();
             m_StartScreenPending = true;
+        }
+
+        void WatchForStall()
+        {
+            bool watched = videoPlayer != null && videoPlayer.isPlaying && (m_FilmShowing || CurrentId == StartScreenId);
+            if (!watched) { m_WatchFrame = -1; return; }
+            long frame = videoPlayer.frame;
+            if (frame != m_WatchFrame) { m_WatchFrame = frame; m_WatchAt = Time.unscaledTime; return; }
+            if (Time.unscaledTime - m_WatchAt < StallSeconds) return;
+            m_WatchFrame = -1;
+            if (m_FilmShowing)
+            {
+                Debug.LogWarning($"[MOI] Film stuck at {videoPlayer.time:F1} s for {StallSeconds:F0} s", this);
+                FilmStalled?.Invoke();
+            }
+            else
+            {
+                Debug.LogWarning($"[MOI] START screen video stuck for {StallSeconds:F0} s - opening it again", this);
+                ShowStartScreen(m_StartScreenPath, true);
+            }
         }
 
         void OnDestroy()

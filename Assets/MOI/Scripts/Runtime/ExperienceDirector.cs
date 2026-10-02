@@ -164,11 +164,13 @@ namespace MOI
         void OnEnable()
         {
             foreach (var a in new[] { m_Start, m_Stop, m_Next, m_Previous, m_Presence, m_GripLeft, m_GripRight, m_StopNow }) a.Enable();
+            if (environments != null) environments.FilmStalled += OnFilmStalled;
         }
 
         void OnDisable()
         {
             foreach (var a in new[] { m_Start, m_Stop, m_Next, m_Previous, m_Presence, m_GripLeft, m_GripRight, m_StopNow }) a.Disable();
+            if (environments != null) environments.FilmStalled -= OnFilmStalled;
         }
 
         void Start()
@@ -207,11 +209,31 @@ namespace MOI
             if (m_AwaySince == 0) return;
             double seconds = (System.DateTime.UtcNow.Ticks - m_AwaySince) / (double)System.TimeSpan.TicksPerSecond;
             m_AwaySince = 0;
-            if (CurrentState == State.Playing && seconds >= filmOffRestartSeconds)
+            if (environments != null) environments.ResetStallWatch();   // nothing ran while away: not a stuck video
+            // Headset build only: on a PC the window loses focus whenever someone clicks elsewhere (the station decides there).
+            if (Application.platform != RuntimePlatform.Android) return;
+            if (seconds < filmOffRestartSeconds) return;
+            if (CurrentState == State.Playing)
             {
                 Debug.Log($"[MOI] Headset was off ({how}) for {seconds:F1} s during the film - back to START");
                 ResetToStart();
             }
+            else if (CurrentState == State.Idle && UsesStartScreen && environments != null)
+            {
+                // After a sleep the START video's decoder can be gone (stuck picture, hanging sound): open it fresh.
+                Debug.Log($"[MOI] Headset was off ({how}) for {seconds:F1} s - START screen video opened again");
+                environments.ShowStartScreen(sequence.startScreenVideoPath, true);
+            }
+        }
+
+
+        // The film stopped advancing while the app is awake (see EnvironmentManager's stall watch): back to START rather than
+        // leaving the visitor in a frozen picture.
+        void OnFilmStalled()
+        {
+            if (CurrentState != State.Playing) return;
+            Debug.Log("[MOI] Film stuck - back to START");
+            ResetToStart();
         }
 
         // While waiting at START, turn the museum so the podium and START are straight ahead of whoever
