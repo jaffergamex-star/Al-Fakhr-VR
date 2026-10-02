@@ -63,12 +63,14 @@ namespace MOI
         // the headset slept (taken off and left) Android can take the decoder away and the player stays stuck on one frame
         // with its sound hanging (user, 2026-10-02). The START video is then opened again; for the film FilmStalled is raised.
         const float StallSeconds = 3f;
-        long m_WatchFrame = -1;
+        const float FirstFrameSeconds = 10f;
+        bool m_Watching;
+        long m_WatchFrame;
         float m_WatchAt;
         public event System.Action FilmStalled;
 
         /// <summary>Forget the stall watch (after a pause: the frames did not move because nothing ran).</summary>
-        public void ResetStallWatch() => m_WatchFrame = -1;
+        public void ResetStallWatch() => m_Watching = false;
 
         Material m_Skybox;
         RenderTexture m_VideoTarget;
@@ -245,7 +247,7 @@ namespace MOI
             if (m_Skybox == null || videoPlayer == null) { Debug.LogWarning("[MOI] No sky material / video player for the START screen.", this); Show(startScreenFallbackId); return; }
             if (!reopen && CurrentId == StartScreenId && (m_StartScreenPending || videoPlayer.isPlaying)) return;
             m_StartScreenPath = path;
-            m_WatchFrame = -1;
+            m_Watching = false;
             CurrentId = StartScreenId;
             foreach (var e in environments)
                 if (e.root != null) e.root.SetActive(false);
@@ -272,11 +274,14 @@ namespace MOI
         void WatchForStall()
         {
             bool watched = videoPlayer != null && videoPlayer.isPlaying && (m_FilmShowing || CurrentId == StartScreenId);
-            if (!watched) { m_WatchFrame = -1; return; }
+            if (!watched) { m_Watching = false; return; }
+            // A separate flag, not a frame value: a video that has not shown its first frame yet reports frame -1, which once
+            // made every fresh START video look stuck at once and reopened it in a loop (black, no sound, 2026-10-02).
             long frame = videoPlayer.frame;
-            if (frame != m_WatchFrame) { m_WatchFrame = frame; m_WatchAt = Time.unscaledTime; return; }
-            if (Time.unscaledTime - m_WatchAt < StallSeconds) return;
-            m_WatchFrame = -1;
+            if (!m_Watching || frame != m_WatchFrame) { m_Watching = true; m_WatchFrame = frame; m_WatchAt = Time.unscaledTime; return; }
+            // The first frame of an 8K video can take a while: 10 s before the first frame, 3 s once it is moving.
+            if (Time.unscaledTime - m_WatchAt < (frame < 1 ? FirstFrameSeconds : StallSeconds)) return;
+            m_Watching = false;
             if (m_FilmShowing)
             {
                 Debug.LogWarning($"[MOI] Film stuck at {videoPlayer.time:F1} s for {StallSeconds:F0} s", this);
