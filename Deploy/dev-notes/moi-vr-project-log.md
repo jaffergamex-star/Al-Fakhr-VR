@@ -113,3 +113,6 @@ metadata:
 
 
 **Bug in the stall watch, fixed (2026-10-02):** the first ASUS-built APK showed black, no sound: the stall watch used m_WatchFrame = -1 as "not watching", but a fresh video reports frame -1 before its first frame, so every START video counted as stuck at once and was reopened in a loop (log "START screen video stuck for 3 s - opening it again" every 1.5 s, headset at 4 fps). Now a separate m_Watching flag, and 10 s allowed before the first frame (3 s once it moves). Rebuilt (0.8 min, already on Android), installed with `install -r` (same ASUS key now, film kept) on FA66G3N00356: START video opens once and loops, 108 fps.
+
+
+**Stall watch: not while the app is throttled (2026-10-03):** on FA66C3N00269 (laptop app uninstalled, ASUS build + film installed) the START video was reopened every ~12 s: the headset lay on the table, the app ran at 5 fps (VRMetricXR FPS=5.0) and the video never showed its first frame, so the 10-s first-frame limit fired again and again. The watch now starts over whenever a frame takes > 0.1 s (below 10 fps) or the app has no focus. Rebuilt (1 min), installed: START video opened once, no reopen in 45 s, 114 fps. FA66G3N00356 and FA66G3N00201 still have the previous ASUS build (same key: `install -r`, film kept) - update when connected.

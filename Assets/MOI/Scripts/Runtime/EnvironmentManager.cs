@@ -275,6 +275,10 @@ namespace MOI
         {
             bool watched = videoPlayer != null && videoPlayer.isPlaying && (m_FilmShowing || CurrentId == StartScreenId);
             if (!watched) { m_Watching = false; return; }
+            // Only while the app runs normally: a headset lying on the table keeps the app awake but throttled (5 frames a
+            // second on FA66C3N00269, 2026-10-03), and then the video does not advance either - not a stuck decoder. Below 10
+            // frames a second, or without focus, the watch starts over.
+            if (Time.unscaledDeltaTime > 0.1f || !Application.isFocused) { m_Watching = false; return; }
             // A separate flag, not a frame value: a video that has not shown its first frame yet reports frame -1, which once
             // made every fresh START video look stuck at once and reopened it in a loop (black, no sound, 2026-10-02).
             long frame = videoPlayer.frame;
